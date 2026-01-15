@@ -1,0 +1,9 @@
+[submodule "caisse"]
+	path = caisse
+	url = git@github.com:valentin-chevreau/caisse-associative.git
+[submodule "logistique"]
+	path = logistique
+	url = git@github.com:valentin-chevreau/logistique-associative.git
+[submodule "planning-associatif"]
+	path = planning-associatif
+	url = git@github.com:valentin-chevreau/planning-associatif.git
