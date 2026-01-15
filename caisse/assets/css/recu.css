@@ -1,0 +1,187 @@
+:root{
+  --bg:#f5f7fb;
+  --card:#ffffff;
+  --text:#0f172a;
+  --muted:#6b7280;
+  --border:#e5e7eb;
+  --primary:#2563eb;
+}
+
+*{ box-sizing:border-box; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; }
+
+body.recu-page{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  padding:14px;
+}
+
+/* Barre actions */
+.recu-toolbar{
+  max-width:460px;
+  margin:0 auto 10px auto;
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.btn{
+  border:1px solid var(--border);
+  background:#fff;
+  padding:10px 12px;
+  border-radius:10px;
+  font-weight:700;
+  cursor:pointer;
+  text-decoration:none;
+  color:var(--text);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+}
+.btn-primary{
+  background:var(--primary);
+  color:#fff;
+  border-color:transparent;
+}
+
+.ticket{
+  max-width:460px;
+  margin:0 auto;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:14px;
+  box-shadow:0 8px 18px rgba(15,23,42,0.08);
+  padding:14px;
+}
+
+/* look "ticket" */
+.ticket::after{
+  content:"";
+  display:block;
+  margin:12px 0 0 0;
+  border-top:2px dashed var(--border);
+}
+
+.ticket-header{
+  padding-bottom:10px;
+  border-bottom:1px dashed var(--border);
+  margin-bottom:10px;
+}
+
+.ticket-title{
+  text-align:center;
+  font-size:18px;
+  font-weight:900;
+  letter-spacing:1px;
+}
+
+.ticket-meta{
+  margin-top:8px;
+  font-size:12.5px;
+  color:var(--text);
+  line-height:1.35;
+}
+
+.ticket-section{
+  margin:10px 0;
+}
+
+.section-title{
+  font-size:12px;
+  color:var(--muted);
+  font-weight:800;
+  letter-spacing:0.6px;
+  text-transform:uppercase;
+  margin-bottom:6px;
+}
+
+.lines{ display:flex; flex-direction:column; gap:8px; }
+.line{ display:flex; justify-content:space-between; gap:10px; }
+.line-left{ min-width:0; }
+.name{
+  font-weight:800;
+  font-size:14px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:300px;
+}
+.sub{ font-size:12px; }
+
+.line-right{ font-weight:900; white-space:nowrap; }
+
+/* Remises */
+.price-old{
+  color: var(--muted);
+  text-decoration: line-through;
+  margin-right: 6px;
+  font-weight: 800;
+}
+.price-new{
+  font-weight: 900;
+}
+.discount-note{ opacity: 0.95; }
+
+.amounts{ text-align:right; }
+.amount-old{
+  color: var(--muted);
+  text-decoration: line-through;
+  font-weight: 800;
+  font-size: 12px;
+}
+.amount-new{
+  font-weight: 900;
+}
+
+.pay-list{ display:flex; flex-direction:column; gap:6px; }
+.pay-row{ display:flex; justify-content:space-between; gap:10px; }
+.pay-method{ font-weight:800; }
+.pay-amount{ font-weight:900; white-space:nowrap; }
+
+.totals{
+  border-top:1px dashed var(--border);
+  padding-top:10px;
+}
+.total-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+  gap:10px;
+  margin-top:4px;
+}
+.strong{ font-weight:900; font-size:16px; }
+
+.ticket-footer{
+  margin-top:10px;
+  text-align:center;
+}
+.thanks{ font-weight:900; margin-bottom:4px; }
+
+.small{ font-size:12px; }
+.muted{ color:var(--muted); }
+
+/* Impression */
+@media print{
+  body.recu-page{
+    background:#fff;
+    padding:0;
+  }
+  .no-print{ display:none !important; }
+  .ticket{
+    max-width:none;
+    border:none;
+    border-radius:0;
+    box-shadow:none;
+    padding:0;
+  }
+  /* On garde un rendu "ticket-like" sur A4 */
+  .ticket{
+    width: 78mm;          /* largeur ticket */
+    margin: 0 auto;
+  }
+  @page{
+    size: A4;
+    margin: 12mm;
+  }
+}

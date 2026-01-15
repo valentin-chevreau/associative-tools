@@ -1,0 +1,8 @@
+config.php
+db.sql
+
+# macOS
+._*
+.DS_Store
+.AppleDouble
+.LSOverride
