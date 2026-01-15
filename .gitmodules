@@ -7,3 +7,6 @@
 [submodule "planning-associatif"]
 	path = planning-associatif
 	url = git@github.com:valentin-chevreau/planning-associatif.git
+[submodule "planning"]
+	path = planning
+	url = git@github.com:valentin-chevreau/planning-associatif.git
