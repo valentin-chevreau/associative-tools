@@ -5,5 +5,8 @@ require_once __DIR__ . '/../shared/bootstrap.php';
 
 admin_logout();
 
-header('Location: ' . suite_base() . '/');
+$next = (string)($_GET['next'] ?? '');
+if ($next === '') $next = suite_base() . '/index.php';
+
+header('Location: ' . $next);
 exit;
