@@ -2,59 +2,50 @@
 declare(strict_types=1);
 
 /**
- * SUITE - Bootstrap canonique (SAFE)
- * - session
- * - .env (loader minimal)
- * - auth globale par codes (admin / admin_plus) via $_SESSION['role']
- * - helpers
- * IMPORTANT: toutes les fonctions sont protégées par function_exists()
+ * shared/bootstrap.php
+ * Point central d'authentification pour la suite tools
+ * - Détecte automatiquement si on est en mode "suite" ou "standalone"
+ * - Unifie l'authentification pour tous les modules
  */
 
-if (session_status() !== PHP_SESSION_ACTIVE) {
+if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-/* -----------------------------
-   .env minimal loader
------------------------------ */
-if (!function_exists('env_load')) {
-    function env_load(string $path): void {
-        if (!is_file($path) || !is_readable($path)) return;
+/* ====================================================================
+   DÉTECTION DU MODE : SUITE vs STANDALONE
+   ==================================================================== */
 
-        $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-        if (!$lines) return;
-
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if ($line === '' || str_starts_with($line, '#')) continue;
-
-            $pos = strpos($line, '=');
-            if ($pos === false) continue;
-
-            $k = trim(substr($line, 0, $pos));
-            $v = trim(substr($line, $pos + 1));
-
-            if (
-                (str_starts_with($v, '"') && str_ends_with($v, '"')) ||
-                (str_starts_with($v, "'") && str_ends_with($v, "'"))
-            ) {
-                $v = substr($v, 1, -1);
-            }
-
-            if ($k !== '') $_ENV[$k] = $v;
-        }
-    }
+if (!defined('SUITE_MODE')) {
+    // On détecte si on est dans la suite tools en cherchant le fichier bootstrap.php
+    $currentFile = __FILE__;
+    $isSuiteMode = (strpos($currentFile, '/tools/shared/') !== false || 
+                    strpos($currentFile, '/preprod-tools/shared/') !== false);
+    
+    define('SUITE_MODE', $isSuiteMode);
 }
 
-/**
- * Charge .env suite: /preprod-fusion/.env
- * OK même si des modules legacy ont leur propre loader.
- */
-env_load(dirname(__DIR__) . '/.env');
+/* ====================================================================
+   CONFIGURATION & HELPERS
+   ==================================================================== */
 
-if (!function_exists('env')) {
-    function env(string $key, ?string $default = null): ?string {
-        return $_ENV[$key] ?? $default;
+if (!function_exists('suite_base')) {
+    function suite_base(): string {
+        $uri = $_SERVER['REQUEST_URI'] ?? '/';
+        $path = parse_url($uri, PHP_URL_PATH) ?: '/';
+        
+        if (strpos($path, '/preprod-tools/') === 0) return '/preprod-tools';
+        if (strpos($path, '/tools/') === 0) return '/tools';
+        
+        // Fallback standalone
+        if (strpos($path, '/preprod-planning') === 0) return '/preprod-planning';
+        if (strpos($path, '/planning') === 0) return '/planning';
+        if (strpos($path, '/preprod-logistique') === 0) return '/preprod-logistique';
+        if (strpos($path, '/logistique') === 0) return '/logistique';
+        if (strpos($path, '/preprod-caisse') === 0) return '/preprod-caisse';
+        if (strpos($path, '/caisse') === 0) return '/caisse';
+        
+        return '';
     }
 }
 
@@ -64,97 +55,120 @@ if (!function_exists('h')) {
     }
 }
 
-if (!function_exists('suite_base')) {
-    function suite_base(): string {
-        return env('SUITE_BASE', '/');
-    }
-}
-
-if (!function_exists('app_env')) {
-    function app_env(): string {
-        return env('APP_ENV', 'prod');
-    }
-}
-
-/* -----------------------------
-   Auth globale (indépendante Planning)
------------------------------ */
-if (!function_exists('csv_codes')) {
-    function csv_codes(?string $s): array {
-        if ($s === null) return [];
-        $parts = array_map('trim', explode(',', $s));
-        return array_values(array_filter($parts, fn($x) => $x !== ''));
-    }
-}
-
-if (!function_exists('current_role')) {
-    function current_role(): string {
-        $r = (string)($_SESSION['role'] ?? 'public');
-        return in_array($r, ['public', 'admin', 'admin_plus'], true) ? $r : 'public';
-    }
-}
-
-if (!function_exists('is_admin')) {
-    function is_admin(): bool {
-        return in_array(current_role(), ['admin', 'admin_plus'], true);
-    }
-}
-
-if (!function_exists('is_admin_plus')) {
-    function is_admin_plus(): bool {
-        return current_role() === 'admin_plus';
-    }
-}
-
-if (!function_exists('admin_login_with_code')) {
-    function admin_login_with_code(string $code): bool {
-        $code = trim($code);
-        if ($code === '') return false;
-
-        $plus = csv_codes(env('ADMIN_PLUS_CODES', ''));
-        if ($plus && in_array($code, $plus, true)) {
-            $_SESSION['role'] = 'admin_plus';
-            return true;
-        }
-
-        $admins = csv_codes(env('ADMIN_CODES', ''));
-        if ($admins && in_array($code, $admins, true)) {
-            $_SESSION['role'] = 'admin';
-            return true;
-        }
-
-        return false;
-    }
-}
-
-if (!function_exists('admin_logout')) {
-    function admin_logout(): void {
-        unset($_SESSION['role']);
-    }
-}
-
-if (!function_exists('require_role')) {
-    function require_role(string $minRole): void {
-        $rank = ['public'=>1, 'admin'=>2, 'admin_plus'=>3];
-        $cur = current_role();
-        if (($rank[$cur] ?? 1) < ($rank[$minRole] ?? 1)) {
-            http_response_code(403);
-            echo "<div style='padding:12px;border:1px solid #f5c2c7;background:#f8d7da;color:#842029;border-radius:10px;font-family:system-ui'>
-                    Accès interdit (niveau requis: ".h($minRole).").
-                  </div>";
-            exit;
-        }
-    }
-}
-
 if (!function_exists('suite_login_url')) {
     function suite_login_url(): string {
-        return suite_base() . '/admin/login.php';
+        $base = suite_base();
+        $current = $_SERVER['REQUEST_URI'] ?? '';
+        
+        if (SUITE_MODE) {
+            // Mode suite : login global
+            return $base . '/admin/login.php?next=' . urlencode($current);
+        } else {
+            // Mode standalone : login du module
+            return 'login_admin.php?redirect=' . urlencode($current);
+        }
     }
 }
 
 if (!function_exists('suite_logout_url')) {
     function suite_logout_url(): string {
-        return suite_base() . '/admin/logout.php';
+        $base = suite_base();
+        return SUITE_MODE ? ($base . '/admin/logout.php') : 'logout_admin.php';
+    }
+}
+
+/* ====================================================================
+   AUTHENTIFICATION UNIFIÉE
+   ==================================================================== */
+
+/**
+ * Vérifie si l'utilisateur est admin (mode suite OU standalone)
+ */
+if (!function_exists('is_admin')) {
+    function is_admin(): bool {
+        // Vérification pour tous les flags possibles (suite + modules)
+        return !empty($_SESSION['is_admin']) || 
+               !empty($_SESSION['admin_authenticated']) || 
+               !empty($_SESSION['admin']);
+    }
+}
+
+/**
+ * Vérifie si l'utilisateur est admin+ (uniquement en mode suite)
+ */
+if (!function_exists('is_admin_plus')) {
+    function is_admin_plus(): bool {
+        return !empty($_SESSION['admin_plus']) || !empty($_SESSION['is_admin_plus']);
+    }
+}
+
+/**
+ * Rôle actuel de l'utilisateur
+ */
+if (!function_exists('current_role')) {
+    function current_role(): string {
+        if (is_admin_plus()) return 'admin_plus';
+        if (is_admin()) return 'admin';
+        return 'public';
+    }
+}
+
+/**
+ * Login avec code (mode suite uniquement)
+ */
+if (!function_exists('admin_login_with_code')) {
+    function admin_login_with_code(string $code): bool {
+        if (!SUITE_MODE) return false;
+        
+        // Codes admin (à modifier selon vos besoins)
+        $codes = [
+            '12345678' => 'admin',      // Code admin normal
+            '87654321' => 'admin_plus', // Code admin+
+        ];
+        
+        $code = trim($code);
+        if (!isset($codes[$code])) return false;
+        
+        $role = $codes[$code];
+        
+        // Set tous les flags pour compatibilité avec tous les modules
+        $_SESSION['is_admin'] = true;
+        $_SESSION['admin_authenticated'] = true;
+        $_SESSION['admin'] = true;
+        $_SESSION['admin_last_active'] = time();
+        
+        if ($role === 'admin_plus') {
+            $_SESSION['admin_plus'] = true;
+            $_SESSION['is_admin_plus'] = true;
+        }
+        
+        return true;
+    }
+}
+
+/**
+ * Déconnexion unifiée
+ */
+if (!function_exists('admin_logout')) {
+    function admin_logout(): void {
+        unset(
+            $_SESSION['is_admin'],
+            $_SESSION['admin_authenticated'],
+            $_SESSION['admin'],
+            $_SESSION['admin_plus'],
+            $_SESSION['is_admin_plus'],
+            $_SESSION['admin_last_active']
+        );
+        session_regenerate_id(true);
+    }
+}
+
+/**
+ * Fonction pour que les modules puissent vérifier l'auth
+ * Compatible avec l'ancienne fonction isAdminAuthenticated() du planning
+ */
+if (!function_exists('isAdminAuthenticated')) {
+    function isAdminAuthenticated(): bool {
+        return is_admin();
     }
 }
