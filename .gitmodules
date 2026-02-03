@@ -10,3 +10,9 @@
 [submodule "planning"]
 	path = planning
 	url = git@github.com:valentin-chevreau/planning-associatif.git
+[submodule "adhesions"]
+	path = adhesions
+	url = git@github.com:valentin-chevreau/associative-memberships.git
+[submodule "subventions"]
+	path = subventions
+	url = git@github.com:valentin-chevreau/associative-subventions.git
