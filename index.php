@@ -3,11 +3,28 @@ declare(strict_types=1);
 
 /**
  * preprod-tools/index.php (ou tools/index.php)
+ * - VERSION SÉCURISÉE avec authentification obligatoire
  * - affiche la nav unifiée (shared/suite_nav.php)
  * - affiche les modules sous forme de cards (à partir de nav_visible_items())
  */
 
 require_once __DIR__ . '/shared/bootstrap.php';
+
+// ========================================
+// PROTECTION : Redirection si non authentifié
+// ========================================
+if (!is_admin()) {
+    // Sauvegarder l'URL demandée pour redirection après login
+    $next = $_SERVER['REQUEST_URI'] ?? '';
+    $loginUrl = suite_login_url();
+    if ($next && strpos($loginUrl, '?') === false) {
+        $loginUrl .= '?next=' . urlencode($next);
+    }
+    header('Location: ' . $loginUrl);
+    exit;
+}
+// ========================================
+
 require_once __DIR__ . '/shared/nav.config.php';
 require_once __DIR__ . '/shared/suite_nav.php';
 
@@ -27,15 +44,17 @@ function role_level(string $role): int {
 
 /* SVG pour les cards (mapping icône -> svg) */
 function card_icon_svg(string $name): string {
-    return match ($name) {
-        'calendar' => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v2M17 3v2M4 8h16M6 5h12a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-        'truck'    => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v10H3V7Zm11 3h4l3 3v4h-7V10Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M7 17a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm12 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
-        'box'      => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8 12 3 3 8v10l9 5 9-5V8Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M3 8l9 5 9-5M12 13v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-        'tag'      => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13 11 22 2 13V2h11l9 11Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M7 7h.01" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>',
-        'cash'     => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18v10H3V7Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
-        'users'    => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11a4 4 0 1 0-8 0" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2 21a7 7 0 0 1 20 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-        default    => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-    };
+    $svgs = [
+        'calendar'  => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v2M17 3v2M4 8h16M6 5h12a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+        'truck'     => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v10H3V7Zm11 3h4l3 3v4h-7V10Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M7 17a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm12 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+        'box'       => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8 12 3 3 8v10l9 5 9-5V8Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M3 8l9 5 9-5M12 13v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+        'tag'       => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13 11 22 2 13V2h11l9 11Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M7 7h.01" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>',
+        'cash'      => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18v10H3V7Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+        'users'     => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11a4 4 0 1 0-8 0" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2 21a7 7 0 0 1 20 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+        'id-card'   => '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="11" r="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 10h4M14 12h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+        'briefcase' => '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="7" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 13h16" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+    ];
+    return $svgs[$name] ?? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 }
 
 $items = function_exists('nav_visible_items') ? nav_visible_items() : [];
@@ -66,8 +85,10 @@ $priority = [
     'Étiquettes'         => 40,
     'Caisse'             => 50,
     'Annuaire'           => 55,
-    'Dons'               => 60,
-    'Rapport d’activité' => 70,
+    'Adhésions'          => 60,
+    'Subventions'        => 65,
+    'Dons'               => 70,
+    'Rapport d\'activité' => 80,
 ];
 
 usort($items, function($a, $b) use ($priority) {

@@ -23,13 +23,15 @@ if (!function_exists('suite_h')) {
 function nav_svg(string $name): string {
     $common = 'class="suite-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"';
     return match ($name) {
-        'calendar' => '<svg '.$common.'><path d="M7 3v2M17 3v2M4 8h16M6 5h12a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/></svg>',
-        'truck'    => '<svg '.$common.'><path d="M3 7h11v10H3z"/><path d="M14 10h4l2 3v4h-6z"/><path d="M7 17a2 2 0 1 0 0 .01M17 17a2 2 0 1 0 0 .01"/></svg>',
-        'box'      => '<svg '.$common.'><path d="M12 3 3 7.5 12 12l9-4.5L12 3z"/><path d="M3 7.5V17l9 4 9-4V7.5"/><path d="M12 12v9"/></svg>',
-        'tag'      => '<svg '.$common.'><path d="M20 12l-8 8-10-10V4h6l12 8z"/><path d="M7.5 7.5h.01"/></svg>',
-        'cash'     => '<svg '.$common.'><path d="M4 7h16v10H4z"/><path d="M8 12h.01M16 12h.01"/><path d="M10 12a2 2 0 0 0 4 0 2 2 0 0 0-4 0z"/></svg>',
-        'users'    => '<svg '.$common.'><path d="M16 11a3 3 0 1 0-6 0 3 3 0 0 0 6 0z"/><path d="M2 20a6 6 0 0 1 12 0"/><path d="M17 20a5 5 0 0 1 5 0"/></svg>',
-        default    => '',
+        'calendar'  => '<svg '.$common.'><path d="M7 3v2M17 3v2M4 8h16M6 5h12a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/></svg>',
+        'truck'     => '<svg '.$common.'><path d="M3 7h11v10H3z"/><path d="M14 10h4l2 3v4h-6z"/><path d="M7 17a2 2 0 1 0 0 .01M17 17a2 2 0 1 0 0 .01"/></svg>',
+        'box'       => '<svg '.$common.'><path d="M12 3 3 7.5 12 12l9-4.5L12 3z"/><path d="M3 7.5V17l9 4 9-4V7.5"/><path d="M12 12v9"/></svg>',
+        'tag'       => '<svg '.$common.'><path d="M20 12l-8 8-10-10V4h6l12 8z"/><path d="M7.5 7.5h.01"/></svg>',
+        'cash'      => '<svg '.$common.'><path d="M4 7h16v10H4z"/><path d="M8 12h.01M16 12h.01"/><path d="M10 12a2 2 0 0 0 4 0 2 2 0 0 0-4 0z"/></svg>',
+        'users'     => '<svg '.$common.'><path d="M16 11a3 3 0 1 0-6 0 3 3 0 0 0 6 0z"/><path d="M2 20a6 6 0 0 1 12 0"/><path d="M17 20a5 5 0 0 1 5 0"/></svg>',
+        'id-card'   => '<svg '.$common.'><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 10h4M14 12h4"/></svg>',
+        'briefcase' => '<svg '.$common.'><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M4 13h16"/></svg>',
+        default     => '',
     };
 }
 
@@ -139,14 +141,14 @@ function suite_item_is_active(array $it, string $currentPath): bool {
   display:inline-flex;
   align-items:center;
   gap: 8px;
-  padding: 8px 12px;          /* <-- plus compact */
+  padding: 8px 12px;
   border-radius: 999px;
   background:#fff;
   border: 1px solid rgba(15,23,42,.10);
   box-shadow: 0 6px 18px rgba(15,23,42,.06);
   color:#111827;
   text-decoration:none;
-  font-size: 13px;            /* <-- plus compact */
+  font-size: 13px;
   font-weight: 800;
   line-height: 1;
   cursor: pointer;
@@ -256,7 +258,7 @@ function suite_item_is_active(array $it, string $currentPath): bool {
   display:inline-flex;
   align-items:center;
   gap: 8px;
-  padding: 8px 12px;     /* compact */
+  padding: 8px 12px;
   border-radius: 999px;
   background:#fff;
   border: 1px solid rgba(15,23,42,.10);
@@ -273,7 +275,7 @@ function suite_item_is_active(array $it, string $currentPath): bool {
 }
 
 .suite-nav-wrap .suite-btn{
-  padding: 8px 12px;     /* compact */
+  padding: 8px 12px;
   border-radius: 999px;
   border: 1px solid rgba(15,23,42,.12);
   background:#fff;

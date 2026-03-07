@@ -7,6 +7,7 @@ declare(strict_types=1);
  * - Règles:
  *   - "Gens" (Bénévoles / Familles) => Annuaire
  *   - Admin séparé visuellement (groupes dans children)
+ *   - Adhésions et Subventions = ADMIN uniquement
  * - Zéro chemins inventés: on ne propose un lien que si la cible existe.
  */
 
@@ -135,10 +136,30 @@ if (!function_exists('nav_items')) {
     add_if_exists($annuaireChildren, 'Bénévoles (caisse)', $root . '/caisse/benevoles.php', $base . '/caisse/benevoles.php', 'admin', 'Admin');
 
     // Bénévoles (planning) => Annuaire
-    // (on teste plusieurs noms possibles, sans inventer)
     add_if_exists($annuaireChildren, 'Bénévoles (planning)', $root . '/planning/admin/volunteers.php', $base . '/planning/admin/volunteers.php', 'admin', 'Admin');
     add_if_exists($annuaireChildren, 'Bénévoles (planning)', $root . '/planning/admin/benevoles.php',  $base . '/planning/admin/benevoles.php',  'admin', 'Admin');
     add_if_exists($annuaireChildren, 'Bénévoles (planning)', $root . '/planning/admin/volunteers_list.php', $base . '/planning/admin/volunteers_list.php', 'admin', 'Admin');
+
+    // ======================
+    // Adhésions (ADMIN uniquement)
+    // ======================
+    $adhesionsChildren = [];
+    add_if_exists($adhesionsChildren, 'Membres',      $root . '/adhesions/index.php',              $base . '/adhesions/index.php', 'admin');
+    add_if_exists($adhesionsChildren, 'Cotisations',  $root . '/adhesions/cotisations/index.php',  $base . '/adhesions/cotisations/index.php', 'admin');
+    add_if_exists($adhesionsChildren, 'Documents',    $root . '/adhesions/documents/index.php',    $base . '/adhesions/documents/index.php', 'admin');
+    add_if_exists($adhesionsChildren, 'Nouveau membre',  $root . '/adhesions/membres/add.php',     $base . '/adhesions/membres/add.php', 'admin', 'Admin');
+    add_if_exists($adhesionsChildren, 'Statistiques',    $root . '/adhesions/stats.php',           $base . '/adhesions/stats.php', 'admin_plus', 'Admin');
+
+    // ======================
+    // Subventions (ADMIN uniquement)
+    // ======================
+    $subventionsChildren = [];
+    add_if_exists($subventionsChildren, 'Demandes',       $root . '/subventions/index.php',              $base . '/subventions/index.php', 'admin');
+    add_if_exists($subventionsChildren, 'Organismes',     $root . '/subventions/organismes/index.php',   $base . '/subventions/organismes/index.php', 'admin');
+    add_if_exists($subventionsChildren, 'Versements',     $root . '/subventions/versements/index.php',   $base . '/subventions/versements/index.php', 'admin');
+    add_if_exists($subventionsChildren, 'Documents',      $root . '/subventions/documents/index.php',    $base . '/subventions/documents/index.php', 'admin');
+    add_if_exists($subventionsChildren, 'Nouvelle demande', $root . '/subventions/demandes/add.php',    $base . '/subventions/demandes/add.php', 'admin', 'Admin');
+    add_if_exists($subventionsChildren, 'Statistiques',     $root . '/subventions/stats.php',           $base . '/subventions/stats.php', 'admin_plus', 'Admin');
 
     // ======================
     // Items top-level
@@ -188,6 +209,26 @@ if (!function_exists('nav_items')) {
       'min_role' => 'public',
       'children' => $annuaireChildren,
     ];
+
+    // Adhésions (apparaît seulement pour admin+)
+    if (!empty($adhesionsChildren)) {
+      $items[] = [
+        'label' => 'Adhésions',
+        'icon'  => 'id-card',
+        'min_role' => 'admin',
+        'children' => $adhesionsChildren,
+      ];
+    }
+
+    // Subventions (apparaît seulement pour admin+)
+    if (!empty($subventionsChildren)) {
+      $items[] = [
+        'label' => 'Subventions',
+        'icon'  => 'briefcase',
+        'min_role' => 'admin',
+        'children' => $subventionsChildren,
+      ];
+    }
 
     return $items;
   }
