@@ -2,3 +2,4 @@
 /uploads/
 var/
 cache/
+config_db.php
