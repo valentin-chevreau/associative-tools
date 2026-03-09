@@ -6,6 +6,7 @@ declare(strict_types=1);
  * Point central d'authentification pour la suite tools
  * - Détecte automatiquement si on est en mode "suite" ou "standalone"
  * - Unifie l'authentification pour tous les modules
+ * - Protège l'accès à /tools/ avec exceptions intelligentes
  */
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -34,8 +35,8 @@ if (!function_exists('suite_base')) {
         $uri = $_SERVER['REQUEST_URI'] ?? '/';
         $path = parse_url($uri, PHP_URL_PATH) ?: '/';
         
-        if (strpos($path, '/preprod-tools/') === 0) return '/preprod-tools';
         if (strpos($path, '/tools/') === 0) return '/tools';
+        if (strpos($path, '/preprod-tools/') === 0) return '/preprod-tools';
         
         // Fallback standalone
         if (strpos($path, '/preprod-planning') === 0) return '/preprod-planning';
@@ -170,5 +171,42 @@ if (!function_exists('admin_logout')) {
 if (!function_exists('isAdminAuthenticated')) {
     function isAdminAuthenticated(): bool {
         return is_admin();
+    }
+}
+
+/* ====================================================================
+   PROTECTION GLOBALE DE /TOOLS/ (AVEC EXCEPTIONS INTELLIGENTES)
+   ==================================================================== */
+
+if (defined('SUITE_MODE') && SUITE_MODE) {
+    
+    // Récupérer le chemin actuel
+    $current_page = $_SERVER['PHP_SELF'] ?? '';
+    
+    // Pages et modules PUBLICS (accessibles sans login)
+    $public_patterns = [
+        '/admin/login.php',                    // Page de login elle-même
+        '/planning/index.php',                 // Planning index public
+        '/planning/events.php',                // Événements planning
+        '/planning/toggle_registration.php',  // Inscription aux créneaux
+    ];
+    
+    // Vérifier si la page actuelle est publique
+    $is_public_page = false;
+    foreach ($public_patterns as $pattern) {
+        if (strpos($current_page, $pattern) !== false) {
+            $is_public_page = true;
+            break;
+        }
+    }
+    
+    // Si pas public ET pas admin → Rediriger vers login
+    if (!$is_public_page && !is_admin()) {
+        // Sauvegarder l'URL demandée pour redirection après login
+        $requested_url = $_SERVER['REQUEST_URI'] ?? '';
+        
+        // Rediriger vers login avec next
+        header('Location: ' . suite_base() . '/admin/login.php?next=' . urlencode($requested_url));
+        exit;
     }
 }
