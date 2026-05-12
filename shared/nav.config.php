@@ -86,8 +86,8 @@ if (!function_exists('nav_items')) {
     add_if_exists($planningChildren, 'Planning', $root . '/planning/index.php', $base . '/planning/index.php');
 
     // Planning admin (reste sous Planning, groupé "Admin")
-    add_if_exists($planningChildren, 'Dons',  $root . '/planning/admin/donations.php',    $base . '/planning/admin/donations.php', 'admin', 'Admin');
-    add_if_exists($planningChildren, 'Admin', $root . '/planning/admin/events_list.php',  $base . '/planning/admin/events_list.php', 'admin', 'Admin');
+    add_if_exists($planningChildren, 'Gestion des dons',  $root . '/planning/admin/donations.php',    $base . '/planning/admin/donations.php', 'admin_plus', 'Admin');
+    add_if_exists($planningChildren, 'Gestion du planning', $root . '/planning/admin/events_list.php',  $base . '/planning/admin/events_list.php', 'admin_plus', 'Admin');
 
     // ======================
     // Logistique / Convois
@@ -119,10 +119,10 @@ if (!function_exists('nav_items')) {
     // ======================
     $caisseChildren = [];
     add_if_exists($caisseChildren, 'Caisse',      $root . '/caisse/index.php',      $base . '/caisse/index.php');
-    add_if_exists($caisseChildren, 'Évènements',  $root . '/caisse/evenements.php', $base . '/caisse/evenements.php');
+    add_if_exists($caisseChildren, 'Évènements',  $root . '/caisse/evenements.php', $base . '/caisse/evenements.php', 'admin_plus', 'Admin');
     add_if_exists($caisseChildren, 'Stock',           $root . '/caisse/stock.php',            $base . '/caisse/stock.php', 'admin', 'Admin');
     add_if_exists($caisseChildren, 'Dashboard',       $root . '/caisse/dashboard.php',        $base . '/caisse/dashboard.php', 'admin', 'Admin');
-    add_if_exists($caisseChildren, 'Retraits caisse', $root . '/caisse/retraits_caisse.php',  $base . '/caisse/retraits_caisse.php', 'admin', 'Admin');
+    add_if_exists($caisseChildren, 'Retraits caisse', $root . '/caisse/retraits_caisse.php',  $base . '/caisse/retraits_caisse.php', 'admin_plus', 'Admin');
 
     // ======================
     // Annuaire (Gens)
@@ -215,7 +215,7 @@ if (!function_exists('nav_items')) {
       $items[] = [
         'label' => 'Adhésions',
         'icon'  => 'id-card',
-        'min_role' => 'admin',
+        'min_role' => 'admin_plus',
         'children' => $adhesionsChildren,
       ];
     }
@@ -225,7 +225,7 @@ if (!function_exists('nav_items')) {
       $items[] = [
         'label' => 'Subventions',
         'icon'  => 'briefcase',
-        'min_role' => 'admin',
+        'min_role' => 'admin_plus',
         'children' => $subventionsChildren,
       ];
     }

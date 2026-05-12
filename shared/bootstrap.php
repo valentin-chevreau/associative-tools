@@ -123,7 +123,8 @@ if (!function_exists('admin_login_with_code')) {
         
         // Codes admin (à modifier selon vos besoins)
         $codes = [
-            '12345678' => 'admin',      // Code admin normal
+            '37222026' => 'admin',     // Code Dorothée
+            '20222026' => 'admin',      // Code admin normal
             '21031426' => 'admin_plus', // Code admin+
         ];
         
