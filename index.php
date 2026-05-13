@@ -1,199 +1,117 @@
 <?php
 declare(strict_types=1);
 
-/**
- * preprod-tools/index.php (ou tools/index.php)
- * - VERSION SÉCURISÉE avec authentification obligatoire
- * - affiche la nav unifiée (shared/suite_nav.php)
- * - affiche les modules sous forme de cards (à partir de nav_visible_items())
- */
-
 require_once __DIR__ . '/shared/bootstrap.php';
 
-// ========================================
-// PROTECTION : Redirection si non authentifié
-// ========================================
 if (!is_admin()) {
-    // Sauvegarder l'URL demandée pour redirection après login
-    $next = $_SERVER['REQUEST_URI'] ?? '';
+    $next     = $_SERVER['REQUEST_URI'] ?? '';
     $loginUrl = suite_login_url();
-    if ($next && strpos($loginUrl, '?') === false) {
-        $loginUrl .= '?next=' . urlencode($next);
-    }
+    if ($next && strpos($loginUrl, '?') === false) $loginUrl .= '?next=' . urlencode($next);
     header('Location: ' . $loginUrl);
     exit;
 }
-// ========================================
 
 require_once __DIR__ . '/shared/nav.config.php';
 require_once __DIR__ . '/shared/suite_nav.php';
 
 function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
 
-/* Rôles (suite) */
-function current_role_safe(): string {
-    return function_exists('current_role') ? (string)current_role() : 'public';
-}
-function role_level(string $role): int {
-    return match ($role) {
-        'admin_plus' => 3,
-        'admin'      => 2,
-        default      => 1, // public
-    };
-}
-
-/* SVG pour les cards (mapping icône -> svg) */
-function card_icon_svg(string $name): string {
-    $svgs = [
-        'calendar'  => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v2M17 3v2M4 8h16M6 5h12a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-        'truck'     => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v10H3V7Zm11 3h4l3 3v4h-7V10Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M7 17a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm12 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
-        'box'       => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8 12 3 3 8v10l9 5 9-5V8Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M3 8l9 5 9-5M12 13v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-        'tag'       => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13 11 22 2 13V2h11l9 11Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M7 7h.01" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>',
-        'cash'      => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18v10H3V7Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
-        'users'     => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11a4 4 0 1 0-8 0" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2 21a7 7 0 0 1 20 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-        'id-card'   => '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="11" r="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 10h4M14 12h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-        'briefcase' => '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="7" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 13h16" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
-    ];
-    return $svgs[$name] ?? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
-}
+$base = function_exists('suite_base') ? suite_base() : '';
 
 $items = function_exists('nav_visible_items') ? nav_visible_items() : [];
 if (!is_array($items)) $items = [];
 
 function portal_item_href(array $it): string {
     if (!empty($it['href'])) return (string)$it['href'];
-    if (!empty($it['children']) && is_array($it['children']) && !empty($it['children'][0]['href'])) {
-        return (string)$it['children'][0]['href'];
-    }
-    return function_exists('suite_base') ? (suite_base() . '/') : '/';
+    if (!empty($it['children'][0]['href'])) return (string)$it['children'][0]['href'];
+    return function_exists('suite_base') ? suite_base() . '/' : '/';
 }
 
 function portal_item_desc(array $it): string {
     if (!empty($it['children']) && is_array($it['children'])) {
-        $labels = array_map(fn($c) => (string)($c['label'] ?? ''), $it['children']);
-        $labels = array_values(array_filter($labels, fn($s) => $s !== ''));
-        $labels = array_slice($labels, 0, 4);
+        $labels = array_slice(array_values(array_filter(array_map(fn($c) => (string)($c['label'] ?? ''), $it['children']))), 0, 4);
         return $labels ? implode(' · ', $labels) : 'Ouvrir le module';
     }
     return 'Ouvrir le module';
 }
 
 $priority = [
-    'Planning'           => 10,
-    'Convois'            => 20,
-    'Stock local'        => 30,
-    'Étiquettes'         => 40,
-    'Caisse'             => 50,
-    'Annuaire'           => 55,
-    'Adhésions'          => 60,
-    'Subventions'        => 65,
-    'Dons'               => 70,
-    'Rapport d\'activité' => 80,
+    'Planning' => 10, 'Convois' => 20, 'Stock local' => 30, 'Étiquettes' => 40,
+    'Caisse' => 50, 'Annuaire' => 55, 'Adhésions' => 60, 'Subventions' => 65,
+    'Dons' => 70, "Rapport d'activité" => 80,
 ];
 
 usort($items, function($a, $b) use ($priority) {
-    $la = (string)($a['label'] ?? '');
-    $lb = (string)($b['label'] ?? '');
-    $pa = $priority[$la] ?? 999;
-    $pb = $priority[$lb] ?? 999;
-    if ($pa === $pb) return strcmp($la, $lb);
-    return $pa <=> $pb;
+    $pa = $priority[(string)($a['label'] ?? '')] ?? 999;
+    $pb = $priority[(string)($b['label'] ?? '')] ?? 999;
+    return $pa !== $pb ? $pa <=> $pb : strcmp((string)($a['label']??''), (string)($b['label']??''));
 });
 
-function is_public_item(array $it): bool {
-    // IMPORTANT: si min_role absent => on considère public (sinon tu perds tout)
-    $min = (string)($it['min_role'] ?? 'public');
-    return $min === 'public';
-}
+$publicItems = array_values(array_filter($items, fn($it) => ((string)($it['min_role'] ?? 'public')) === 'public'));
+$adminItems  = array_values(array_filter($items, fn($it) => ((string)($it['min_role'] ?? 'public')) !== 'public'));
 
-$benevole   = array_values(array_filter($items, fn($it) => is_public_item($it)));
-$adminItems = array_values(array_filter($items, fn($it) => !is_public_item($it)));
-
-$role      = current_role_safe();
-$roleLevel = role_level($role);
+$role = function_exists('current_role') ? current_role() : 'public';
+$isAdminPlus = ($role === 'admin_plus');
 ?>
-<style>
-  .suite-home-wrap{
-    font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    background:#f5f6f8;
-    min-height:calc(100vh - 54px);
-    padding:22px 18px;
-  }
-  .suite-home-inner{ max-width:1100px;margin:0 auto; }
-  .suite-home-title{ font-size:34px;font-weight:900;line-height:1.1;margin:10px 0 6px; }
-  .suite-home-sub{ opacity:.75; margin-bottom:18px; }
-  .suite-home-h2{ margin:18px 0 10px;font-weight:800;font-size:16px; }
-  .suite-grid{ display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); }
-  .suite-card{
-    background:#fff;border:1px solid #e5e7eb;border-radius:16px;
-    padding:16px;text-decoration:none;color:#111827;
-    box-shadow:0 6px 20px rgba(0,0,0,.04);
-    display:block;
-    transition:transform .12s ease, box-shadow .12s ease;
-  }
-  .suite-card:hover{ box-shadow:0 10px 30px rgba(0,0,0,.07); transform:translateY(-1px); }
-  .suite-row{ display:flex;align-items:center;gap:10px;margin-bottom:6px; }
-  .suite-ico{
-    width:40px;height:40px;border-radius:12px;background:#f1f5f9;
-    display:flex;align-items:center;justify-content:center;
-    color:#0f172a;
-  }
-  .suite-ico svg{ width:20px;height:20px; }
-  .suite-label{ font-weight:800;font-size:18px; }
-  .suite-desc{ opacity:.75;font-size:13px;margin-bottom:12px; }
-  .suite-btn{
-    display:inline-block;background:#111827;color:#fff;padding:8px 12px;border-radius:999px;
-    font-weight:700;font-size:13px;
-  }
-  .suite-admin-card{ border-color:#fde68a; }
-  .suite-admin-ico{ background:#fef3c7; }
-  .suite-role-pill{
-    font-size:12px;padding:2px 8px;border-radius:999px;background:#111827;color:#fff;opacity:.9;
-  }
-</style>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Suite Touraine-Ukraine</title>
+  <link rel="stylesheet" href="<?= h($base) ?>/assets/css/suite_nav.css">
+</head>
+<body class="tu-v2">
 
-<div class="suite-home-wrap">
-  <div class="suite-home-inner">
+<?php suite_nav_render('', ''); ?>
 
-    <div class="suite-home-title">Suite Touraine-Ukraine</div>
-    <div class="suite-home-sub">Accès rapide aux modules</div>
+<div class="tu-main">
 
-    <div class="suite-home-h2">Modules</div>
+  <div class="tu-topbar">
+    <div class="tu-bc">
+      <span class="tu-bc-cur">Accueil</span>
+    </div>
+  </div>
 
-    <?php if (empty($benevole)): ?>
-      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:14px;opacity:.85;">
-        Aucun module visible pour ce rôle.
+  <div class="tu-pg">
+
+    <div class="tu-ph">
+      <div>
+        <div class="tu-ph-title">Bonjour 👋</div>
+        <div class="tu-ph-sub">Que souhaitez-vous faire aujourd'hui ?</div>
       </div>
-    <?php else: ?>
-      <div class="suite-grid">
-        <?php foreach ($benevole as $it): ?>
-          <?php $iconName = (string)($it['icon'] ?? ''); ?>
-          <a class="suite-card" href="<?= h(portal_item_href($it)) ?>">
-            <div class="suite-row">
-              <div class="suite-ico"><?= card_icon_svg($iconName) ?></div>
-              <div class="suite-label"><?= h((string)($it['label'] ?? '')) ?></div>
+    </div>
+
+    <?php if (!empty($publicItems)): ?>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--tu-ink-300);margin-bottom:12px;">Modules</div>
+      <div class="tu-portal-grid tu-mb4">
+        <?php foreach ($publicItems as $it): ?>
+          <a href="<?= h(portal_item_href($it)) ?>" class="tu-portal-card">
+            <div class="tu-pc-ico">
+              <?= card_icon_emoji((string)($it['icon'] ?? '')) ?>
             </div>
-            <div class="suite-desc"><?= h(portal_item_desc($it)) ?></div>
-            <div class="suite-btn">Ouvrir</div>
+            <div class="tu-pc-name"><?= h((string)($it['label'] ?? '')) ?></div>
+            <div class="tu-pc-desc"><?= h(portal_item_desc($it)) ?></div>
+            <div class="tu-pc-foot"><span class="tu-pc-link">Ouvrir →</span></div>
           </a>
         <?php endforeach; ?>
       </div>
     <?php endif; ?>
 
-    <?php if ($roleLevel >= 2 && !empty($adminItems)): ?>
-      <div class="suite-home-h2" style="margin-top:26px;">Administration</div>
-
-      <div class="suite-grid">
+    <?php if (!empty($adminItems)): ?>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--tu-ink-300);margin-bottom:12px;">Administration</div>
+      <div class="tu-portal-grid">
         <?php foreach ($adminItems as $it): ?>
-          <?php $iconName = (string)($it['icon'] ?? ''); ?>
-          <a class="suite-card suite-admin-card" href="<?= h(portal_item_href($it)) ?>">
-            <div class="suite-row">
-              <div class="suite-ico suite-admin-ico"><?= card_icon_svg($iconName) ?></div>
-              <div class="suite-label" style="flex:1;"><?= h((string)($it['label'] ?? '')) ?></div>
-              <span class="suite-role-pill"><?= h((string)($it['min_role'] ?? 'admin')) ?></span>
+          <a href="<?= h(portal_item_href($it)) ?>" class="tu-portal-card tu-portal-card-admin">
+            <div class="tu-pc-ico">
+              <?= card_icon_emoji((string)($it['icon'] ?? '')) ?>
             </div>
-            <div class="suite-desc"><?= h(portal_item_desc($it)) ?></div>
-            <div class="suite-btn">Ouvrir</div>
+            <div class="tu-pc-name"><?= h((string)($it['label'] ?? '')) ?></div>
+            <div class="tu-pc-desc"><?= h(portal_item_desc($it)) ?></div>
+            <div class="tu-pc-foot">
+              <span class="tu-pc-link">Ouvrir →</span>
+              <span class="tu-bdg tu-bdg-amber" style="font-size:10px;"><?= h((string)($it['min_role'] ?? 'admin')) ?></span>
+            </div>
           </a>
         <?php endforeach; ?>
       </div>
@@ -201,3 +119,70 @@ $roleLevel = role_level($role);
 
   </div>
 </div>
+
+<?php
+function card_icon_emoji(string $name): string {
+    return match($name) {
+        'calendar'  => '📅',
+        'truck'     => '🚛',
+        'box'       => '📦',
+        'tag'       => '🏷',
+        'cash'      => '💰',
+        'users'     => '👥',
+        'id-card'   => '🪪',
+        'briefcase' => '🗂',
+        default     => '⚙️',
+    };
+}
+?>
+
+<style>
+.tu-portal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 12px;
+}
+.tu-portal-card {
+  background: var(--tu-raised);
+  border: 1px solid var(--tu-ink-100);
+  border-radius: var(--tu-r-lg);
+  padding: 18px;
+  cursor: pointer;
+  transition: all .2s;
+  text-decoration: none;
+  display: block;
+  box-shadow: var(--tu-shadow);
+}
+.tu-portal-card:hover {
+  box-shadow: var(--tu-shadow-lg);
+  transform: translateY(-2px);
+  border-color: var(--tu-amber-400);
+}
+.tu-portal-card-admin {
+  border-color: rgba(232,146,74,.22);
+  background: linear-gradient(135deg, #fffef9, #fdf5e8);
+}
+.tu-pc-ico {
+  width: 42px; height: 42px;
+  border-radius: 12px;
+  background: var(--tu-sand-100);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 12px;
+  font-size: 20px;
+}
+.tu-portal-card-admin .tu-pc-ico { background: rgba(232,146,74,.14); }
+.tu-pc-name {
+  font-family: var(--tu-font-d);
+  font-size: 14.5px; font-weight: 700;
+  color: var(--tu-ink-900); margin-bottom: 4px;
+}
+.tu-pc-desc { font-size: 12px; color: var(--tu-ink-300); line-height: 1.5; }
+.tu-pc-foot {
+  margin-top: 12px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.tu-pc-link { font-size: 12px; font-weight: 700; color: var(--tu-amber-500); }
+</style>
+
+</body>
+</html>
