@@ -709,6 +709,22 @@ body.tu-v2 *, body.tu-v2 *::before, body.tu-v2 *::after {
 .tu-ava:first-child { margin-left: 0; }
 .tu-ava-cnt { font-size: 11.5px; color: var(--tu-ink-300); margin-left: 7px; }
 
+/* Wrap avatars + noms */
+.tu-avas-wrap    { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.tu-avas-row     { display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; }
+.tu-slot-info    { font-size: 11.5px; color: var(--tu-ink-300); white-space: nowrap; margin-left: 4px; }
+
+@media (max-width: 600px) {
+  /* Cacher le texte "X inscrits · min Y" mais garder les badges colorés */
+  .tu-slot-info { color: transparent; font-size: 0; }
+  .tu-slot-info .tu-slot-missing,
+  .tu-slot-info .tu-slot-ok { font-size: 12px; }
+}
+.tu-slot-missing { color: var(--tu-red-main); font-weight: 700; animation: tu-pulse 2s infinite; }
+.tu-slot-ok      { color: var(--tu-green-main); font-weight: 700; }
+.tu-ava-names    { font-size: 11px; color: var(--tu-ink-300); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tu-ava-more     { background: var(--tu-ink-100); color: var(--tu-ink-500); font-size: 10px; font-weight: 700; }
+
 /* Boutons inscription créneau */
 .tu-reg-btn {
   padding: 6px 14px; border-radius: 999px;
@@ -788,13 +804,38 @@ body.tu-v2 *, body.tu-v2 *::before, body.tu-v2 *::after {
   .tu-topbar { padding-left: 52px; }
   .tu-hamburger { top: 10px; left: 10px; width: 36px; height: 36px; }
 
-  /* Slot row mobile */
-  .tu-slot-row { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
-  .tu-slot-time { min-width: unset; font-size: 15px; flex-shrink: 0; }
-  .tu-avas-wrap { flex: 1; min-width: 0; }
-  .tu-slot-row > div:last-child { width: 100%; display: flex; justify-content: flex-end; margin-left: 0; }
-  .tu-reg-btn { width: 100%; justify-content: center; text-align: center; }
-  .tu-ava-names { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* Slot row mobile : grille 2 colonnes */
+  .tu-slot-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "time btn"
+      "avas btn";
+    gap: 6px 10px;
+    padding: 10px 12px;
+    align-items: center;
+  }
+  .tu-slot-time {
+    grid-area: time;
+    font-size: 15px;
+  }
+  .tu-avas-wrap {
+    grid-area: avas;
+    min-width: 0;
+  }
+  .tu-slot-row > div:last-child {
+    grid-area: btn;
+    margin-left: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+  .tu-ava-names {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
 }
 
 /* ═══════════════════════════════════════
