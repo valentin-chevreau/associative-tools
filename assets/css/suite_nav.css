@@ -1,18 +1,16 @@
 /*
- * suite_v2.css — Design system Touraine-Ukraine
+ * suite_nav.css — Design system Touraine-Ukraine
  * Branche : refonte-ui-app-v2
- *
- * Usage dans chaque module :
- *   <link rel="stylesheet" href="/tools/assets/css/suite_v2.css">
- *
- * Tous les composants sont préfixés .tu- pour éviter toute collision
- * avec les CSS existants des modules standalone.
  */
 
 /* ═══════════════════════════════════════
    IMPORTS GOOGLE FONTS
 ═══════════════════════════════════════ */
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap');
+
+/* Font de base pour toutes les pages chargeant ce CSS (avec ou sans body.tu-v2) */
+body { font-family: 'DM Sans', system-ui, -apple-system, sans-serif; }
+h1, h2, h3, .tu-ph-title, .tu-kpi-val { font-family: 'Sora', system-ui, -apple-system, sans-serif; }
 
 /* ═══════════════════════════════════════
    TOKENS
@@ -65,6 +63,10 @@
 /* ═══════════════════════════════════════
    BASE LAYOUT
 ═══════════════════════════════════════ */
+body {
+  font-family: var(--tu-font-b);
+}
+
 body.tu-v2 {
   margin: 0;
   padding: 0;

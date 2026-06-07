@@ -150,11 +150,19 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
     <div class="tu-sb-sub-nav">
       <a href="<?= h2($base . '/logistique/index.php') ?>"
          class="tu-sb-item <?= _nav_active('logistique-convois', $activeItem, $activeModule, 'logistique') ?>">
-        Tous les convois
+        Convois
+      </a>
+      <a href="<?= h2($base . '/logistique/categories/view.php') ?>"
+         class="tu-sb-item <?= _nav_active('logistique-categories', $activeItem, $activeModule, 'logistique') ?>">
+        Catégories
       </a>
       <a href="<?= h2($base . '/logistique/stock/index.php') ?>"
          class="tu-sb-item <?= _nav_active('logistique-stock', $activeItem, $activeModule, 'logistique') ?>">
         Stock local
+      </a>
+      <a href="<?= h2($base . '/logistique/stock/categories/index.php') ?>"
+         class="tu-sb-item <?= _nav_active('logistique-stock-categories', $activeItem, $activeModule, 'logistique') ?>">
+        Catégories stock
       </a>
       <a href="<?= h2($base . '/logistique/families/index.php') ?>"
          class="tu-sb-item <?= _nav_active('logistique-families', $activeItem, $activeModule, 'logistique') ?>">
@@ -163,6 +171,10 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
       <a href="<?= h2($base . '/logistique/labels/labels.php') ?>"
          class="tu-sb-item <?= _nav_active('logistique-labels', $activeItem, $activeModule, 'logistique') ?>">
         Étiquettes
+      </a>
+      <a href="<?= h2($base . '/logistique/stats.php') ?>"
+         class="tu-sb-item <?= _nav_active('logistique-stats', $activeItem, $activeModule, 'logistique') ?>">
+        Statistiques
       </a>
     </div>
     <?php endif; ?>
@@ -301,7 +313,7 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
 
 } // end if !function_exists
 
-// Alias rétrocompatibilité — les pages qui appellent encore suite_nav_v2_render() continuent de fonctionner
+// Alias rétrocompatibilité
 if (!function_exists('suite_nav_v2_render')) {
     function suite_nav_v2_render(string $activeModule = '', string $activeItem = ''): void {
         suite_nav_render($activeModule, $activeItem);
