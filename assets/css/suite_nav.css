@@ -95,7 +95,8 @@ body.tu-v2 *, body.tu-v2 *::before, body.tu-v2 *::after {
 ═══════════════════════════════════════ */
 .tu-sb {
   width: var(--tu-sw);
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
   background: var(--tu-ink-900);
   display: flex;
   flex-direction: column;
@@ -103,10 +104,11 @@ body.tu-v2 *, body.tu-v2 *::before, body.tu-v2 *::after {
   left: 0; top: 0; bottom: 0;
   z-index: 200;
   box-shadow: 2px 0 16px rgba(26,21,16,.12);
+  overflow: hidden;
 }
 
 .tu-sb-brand {
-  padding: 20px 18px 16px;
+  padding: max(20px, calc(env(safe-area-inset-top, 0px) + 12px)) 18px 16px;
   display: flex;
   align-items: center;
   gap: 11px;
@@ -136,8 +138,11 @@ body.tu-v2 *, body.tu-v2 *::before, body.tu-v2 *::after {
   flex: 1;
   padding: 10px 8px;
   overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,.1) transparent;
+  /* Assure que le foot reste toujours visible */
+  min-height: 0;
 }
 
 .tu-sb-sec {
@@ -782,12 +787,18 @@ body.tu-v2 *, body.tu-v2 *::before, body.tu-v2 *::after {
     position: fixed !important;
     top: 0; left: 0;
     width: 240px !important;
+    height: 100vh;
     height: 100dvh;
     z-index: 1000;
     transform: translateX(-100%);
     transition: transform .25s cubic-bezier(.4,0,.2,1);
     box-shadow: 4px 0 24px rgba(0,0,0,.3);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .tu-sb.tu-open .tu-sb-nav {
+    overflow-y: auto;
   }
   .tu-sb.tu-open {
     transform: translateX(0);
@@ -804,7 +815,11 @@ body.tu-v2 *, body.tu-v2 *::before, body.tu-v2 *::after {
   .tu-form-grid-3 { grid-template-columns: 1fr !important; }
   .tu-kpi-grid { grid-template-columns: 1fr 1fr; }
   .tu-topbar { padding-left: 52px; }
-  .tu-hamburger { top: 10px; left: 10px; width: 36px; height: 36px; }
+  .tu-hamburger {
+    top: max(10px, env(safe-area-inset-top, 10px));
+    left: max(10px, env(safe-area-inset-left, 10px));
+    width: 36px; height: 36px;
+  }
 
   /* Slot row mobile : grille 2 colonnes */
   .tu-slot-row {
@@ -846,12 +861,12 @@ body.tu-v2 *, body.tu-v2 *::before, body.tu-v2 *::after {
 .tu-hamburger {
   display: none;
   position: fixed;
-  top: 12px;
-  left: 12px;
+  top: max(12px, env(safe-area-inset-top, 12px));
+  left: max(12px, env(safe-area-inset-left, 12px));
   z-index: 1100;
   width: 40px;
   height: 40px;
-  background: var(--tu-sand-900);
+  background: var(--tu-ink-900);
   border: none;
   border-radius: 10px;
   cursor: pointer;
@@ -922,6 +937,11 @@ body.tu-sb-open .tu-sb-close { display: flex; }
 /* Quand sidebar ouverte sur mobile : bloquer le scroll du body */
 body.tu-sb-open {
   overflow: hidden;
+}
+
+/* Masquer le hamburger quand la sidebar est ouverte */
+body.tu-sb-open .tu-hamburger {
+  display: none !important;
 }
 
 /* ═══════════════════════════════════════
