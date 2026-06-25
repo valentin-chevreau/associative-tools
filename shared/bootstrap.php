@@ -293,6 +293,7 @@ if (defined('SUITE_MODE') && SUITE_MODE) {
         '/planning/index.php',
         '/planning/events.php',
         '/planning/toggle_registration.php',
+        '/planning/calendar.ics.php',
         '/logistique/stops/validate.php',
     ];
 
