@@ -26,6 +26,9 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
         default      => 'public',
     };
 
+    $volunteerName = function_exists('current_volunteer_name') ? current_volunteer_name() : '';
+    $displayName   = ($isAdmin && $volunteerName !== '' && $volunteerName !== 'Inconnu') ? $volunteerName : null;
+
     $loginUrl  = function_exists('suite_login_url')  ? suite_login_url()  : ($base . '/admin/login.php');
     $logoutUrl = function_exists('suite_logout_url') ? suite_logout_url() : ($base . '/admin/logout.php');
 
@@ -77,10 +80,6 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
          class="tu-sb-item <?= _nav_active('planning-create', $activeItem, $activeModule, 'planning') ?>">
         Créer un événement
       </a>
-      <a href="<?= h2($base . '/planning/admin/volunteers_list.php') ?>"
-         class="tu-sb-item <?= _nav_active('planning-benevoles', $activeItem, $activeModule, 'planning') ?>">
-        Bénévoles
-      </a>
       <a href="<?= h2($base . '/planning/admin/donations.php') ?>"
          class="tu-sb-item <?= _nav_active('planning-dons', $activeItem, $activeModule, 'planning') ?>">
         Dons
@@ -126,10 +125,6 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
       <a href="<?= h2($base . '/caisse/retraits_caisse.php') ?>"
          class="tu-sb-item <?= _nav_active('caisse-retraits', $activeItem, $activeModule, 'caisse') ?>">
         Retraits
-      </a>
-      <a href="<?= h2($base . '/caisse/benevoles.php') ?>"
-         class="tu-sb-item <?= _nav_active('caisse-benevoles', $activeItem, $activeModule, 'caisse') ?>">
-        Bénévoles caisse
       </a>
       <?php endif; ?>
     </div>
@@ -195,6 +190,31 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
     <span class="tu-sb-sec">Administration</span>
 
     <?php if ($isAdmin): ?>
+    <!-- UTILISATEURS -->
+    <a href="<?= h2($base . '/admin/users.php') ?>"
+       class="tu-sb-item <?= _mod_active('users', $activeModule) ?>"
+       id="snav-users">
+      <svg class="tu-sb-ico" viewBox="0 0 24 24">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+      Utilisateurs
+    </a>
+
+    <!-- JOURNAL D'AUDIT -->
+    <a href="<?= h2($base . '/admin/audit_log.php') ?>"
+       class="tu-sb-item <?= _mod_active('audit', $activeModule) ?>"
+       id="snav-audit">
+      <svg class="tu-sb-ico" viewBox="0 0 24 24">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+      </svg>
+      Journal d'audit
+    </a>
+
     <!-- ADHÉSIONS -->
     <a href="<?= h2($base . '/adhesions/index.php') ?>"
        class="tu-sb-item <?= _mod_active('adhesions', $activeModule) ?>"
@@ -252,7 +272,14 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
   <div class="tu-sb-foot">
     <div class="tu-role-row">
       <div class="tu-role-dot <?= h2($roleDotClass) ?>"></div>
-      <span class="tu-role-lbl"><?= h2($roleLabel) ?></span>
+      <span class="tu-role-lbl">
+        <?php if ($displayName): ?>
+          <?= h2($displayName) ?>
+          <span style="opacity:.6;font-weight:400;">· <?= h2($roleLabel) ?></span>
+        <?php else: ?>
+          <?= h2($roleLabel) ?>
+        <?php endif; ?>
+      </span>
       <?php if ($isAdmin): ?>
         <a href="<?= h2($logoutUrl) ?>" class="tu-logout-btn">Déco</a>
       <?php else: ?>
@@ -276,7 +303,6 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
   var sidebar   = document.getElementById('tu-sidebar');
   var overlay   = document.getElementById('tu-overlay');
 
-  // Créer le bouton close dynamiquement — appendé au body, jamais dans l'aside
   var closeBtn = document.createElement('button');
   closeBtn.className = 'tu-sb-close';
   closeBtn.setAttribute('aria-label', 'Fermer le menu');
@@ -300,7 +326,6 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
     if (e.key === 'Escape') tuSidebarClose();
   });
 
-  // Sur mobile, fermer au clic d'un lien
   sidebar.querySelectorAll('a').forEach(function(link) {
     link.addEventListener('click', function() {
       if (window.innerWidth <= 900) tuSidebarClose();
