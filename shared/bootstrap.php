@@ -236,6 +236,28 @@ if (!function_exists('isAdminAuthenticated')) {
     }
 }
 
+/**
+ * Gardes d'accès — anciennement fournies par auth_helper.php (fichier disparu).
+ * Redirigent vers le login si le rôle requis n'est pas atteint.
+ */
+if (!function_exists('require_admin')) {
+    function require_admin(): void {
+        if (!is_admin()) {
+            header('Location: ' . suite_login_url());
+            exit;
+        }
+    }
+}
+
+if (!function_exists('require_admin_plus')) {
+    function require_admin_plus(): void {
+        if (!is_admin_plus()) {
+            header('Location: ' . suite_login_url());
+            exit;
+        }
+    }
+}
+
 /* ====================================================================
    JOURNAL D'AUDIT — utilisable par tous les modules
    ==================================================================== */
@@ -277,6 +299,17 @@ if (!function_exists('audit_log')) {
         } catch (Exception $e) {
             error_log('audit_log failed: ' . $e->getMessage());
         }
+    }
+}
+
+/**
+ * Compatibilité — anciennement fournie par auth_helper.php (fichier disparu).
+ * Wrapper simplifié autour de audit_log() pour les appels historiques
+ * log_action($module, $action, $description).
+ */
+if (!function_exists('log_action')) {
+    function log_action(string $module, string $action, ?string $description = null): void {
+        audit_log($module, $action, null, null, null, $description !== null ? ['description' => $description] : null);
     }
 }
 
