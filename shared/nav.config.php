@@ -132,9 +132,6 @@ if (!function_exists('nav_items')) {
     // Familles (logistique)
     add_if_exists($annuaireChildren, 'Familles', $root . '/logistique/families/index.php', $base . '/logistique/families/index.php');
 
-    // Bénévoles (caisse) => Annuaire
-    add_if_exists($annuaireChildren, 'Bénévoles (caisse)', $root . '/caisse/benevoles.php', $base . '/caisse/benevoles.php', 'admin', 'Admin');
-
     // Bénévoles (planning) => Annuaire
     add_if_exists($annuaireChildren, 'Bénévoles (planning)', $root . '/planning/admin/volunteers.php', $base . '/planning/admin/volunteers.php', 'admin', 'Admin');
     add_if_exists($annuaireChildren, 'Bénévoles (planning)', $root . '/planning/admin/benevoles.php',  $base . '/planning/admin/benevoles.php',  'admin', 'Admin');
@@ -160,6 +157,31 @@ if (!function_exists('nav_items')) {
     add_if_exists($subventionsChildren, 'Documents',      $root . '/subventions/documents/index.php',    $base . '/subventions/documents/index.php', 'admin');
     add_if_exists($subventionsChildren, 'Nouvelle demande', $root . '/subventions/demandes/add.php',    $base . '/subventions/demandes/add.php', 'admin', 'Admin');
     add_if_exists($subventionsChildren, 'Statistiques',     $root . '/subventions/stats.php',           $base . '/subventions/stats.php', 'admin_plus', 'Admin');
+
+    // ======================
+    // Prospection (démarchage matériel/dons — ADMIN+ uniquement)
+    // Catégories listées en dur (comme les autres sections de ce fichier) plutôt
+    // qu'interrogées en base à chaque chargement de page : si une catégorie est
+    // ajoutée dans prospection/schema.sql, ajoute la ligne correspondante ici.
+    // ======================
+    $prospectionCategoriesNav = [
+        'jouets_magasins_fr'              => 'Jouets — Magasins',
+        'jouets_grandes_surfaces'         => 'Jouets — Grandes surfaces',
+        'jouets_ludotheques_ecoles_ville' => 'Jouets — Ludothèques - écoles - ville',
+        'epi'                             => 'EPI',
+        'medic_ephad'                     => 'Médical — EHPAD',
+        'medic_ssiad'                     => 'Médical — SSIAD',
+        'medic_fr_materiel'               => 'Médical — Matériel médical - FR',
+        'reeduc_salles_sport_muscu'       => 'Médical — Salles de sport - musculation',
+        'filets_anti_drones'              => 'Filets anti-drones',
+    ];
+    $prospectionChildren = [];
+    add_if_exists($prospectionChildren, 'Toutes les fiches', $root . '/prospection/index.php', $base . '/prospection/index.php');
+    foreach ($prospectionCategoriesNav as $pCode => $pLabel) {
+        add_if_exists($prospectionChildren, $pLabel, $root . '/prospection/index.php', $base . '/prospection/index.php?categorie=' . urlencode($pCode));
+    }
+    add_if_exists($prospectionChildren, 'Importer un CSV', $root . '/prospection/import.php', $base . '/prospection/import.php', 'admin_plus', 'Admin');
+    add_if_exists($prospectionChildren, 'Nouvelle fiche',  $root . '/prospection/contact_form.php', $base . '/prospection/contact_form.php', 'admin_plus', 'Admin');
 
     // ======================
     // Items top-level
@@ -227,6 +249,16 @@ if (!function_exists('nav_items')) {
         'icon'  => 'briefcase',
         'min_role' => 'admin_plus',
         'children' => $subventionsChildren,
+      ];
+    }
+
+    // Prospection (apparaît seulement pour admin+)
+    if (!empty($prospectionChildren)) {
+      $items[] = [
+        'label' => 'Prospection',
+        'icon'  => 'briefcase',
+        'min_role' => 'admin_plus',
+        'children' => $prospectionChildren,
       ];
     }
 

@@ -265,6 +265,55 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
       <?php endif; ?>
     </div>
     <?php endif; ?>
+
+    <?php if ($isAdminPlus): ?>
+    <!-- PROSPECTION -->
+    <?php
+      // Catégories listées en dur (comme nav.config.php) pour éviter une requête
+      // BDD à chaque chargement de page. Si une catégorie est ajoutée dans
+      // prospection/schema.sql, ajoute la ligne correspondante ici aussi.
+      $prospectionCategoriesNav = [
+          'jouets_magasins_fr'              => 'Jouets — Magasins',
+          'jouets_grandes_surfaces'         => 'Jouets — Grandes surfaces',
+          'jouets_ludotheques_ecoles_ville' => 'Jouets — Ludothèques - écoles - ville',
+          'epi'                             => 'EPI',
+          'medic_ephad'                     => 'Médical — EHPAD',
+          'medic_ssiad'                     => 'Médical — SSIAD',
+          'medic_fr_materiel'               => 'Médical — Matériel médical - FR',
+          'reeduc_salles_sport_muscu'       => 'Médical — Salles de sport - musculation',
+          'filets_anti_drones'              => 'Filets anti-drones',
+      ];
+    ?>
+    <a href="<?= h2($base . '/prospection/index.php') ?>"
+       class="tu-sb-item <?= _mod_active('prospection', $activeModule) ?>"
+       id="snav-prospection">
+      <svg class="tu-sb-ico" viewBox="0 0 24 24">
+        <path d="M21 8v13H3V8M1 3h22l-3 5H4l-3-5z"/>
+        <path d="M10 12h4"/>
+      </svg>
+      Prospection
+    </a>
+    <?php if ($activeModule === 'prospection'): ?>
+    <div class="tu-sb-sub-nav">
+      <a href="<?= h2($base . '/prospection/index.php') ?>"
+         class="tu-sb-item <?= _nav_active('prospection-toutes', $activeItem, $activeModule, 'prospection') ?>">
+        Toutes les fiches
+      </a>
+      <?php foreach ($prospectionCategoriesNav as $pCode => $pLabel): ?>
+      <a href="<?= h2($base . '/prospection/index.php?categorie=' . urlencode($pCode)) ?>"
+         class="tu-sb-item <?= _nav_active('prospection-' . $pCode, $activeItem, $activeModule, 'prospection') ?>"
+         style="font-size:12.5px;padding-left:34px;">
+        <?= h2($pLabel) ?>
+      </a>
+      <?php endforeach; ?>
+      <a href="<?= h2($base . '/prospection/import.php') ?>"
+         class="tu-sb-item <?= _nav_active('prospection-import', $activeItem, $activeModule, 'prospection') ?>">
+        Importer un CSV
+      </a>
+    </div>
+    <?php endif; ?>
+    <?php endif; ?>
+
     <?php endif; ?>
 
   </nav>

@@ -360,7 +360,7 @@ suite_nav_render('users', '');
               </td>
               <td style="font-size:12.5px;">
                 <?= h(labelFunction($v['member_function'])) ?>
-                <button type="button" onclick='openEditProfileModal(<?= (int)$v['id'] ?>, <?= json_encode($v['member_function']) ?>, <?= json_encode($v['presence_status']) ?>, <?= json_encode($fullName) ?>)'
+                <button type="button" onclick='openEditProfileModal(<?= (int)$v['id'] ?>, <?= json_encode($v['member_function'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= json_encode($v['presence_status'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= json_encode($fullName, JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'
                         style="background:none;border:none;color:var(--tu-ink-300);cursor:pointer;font-size:11px;text-decoration:underline;padding:0;margin-left:4px;">éditer</button>
               </td>
               <td>
@@ -376,7 +376,7 @@ suite_nav_render('users', '');
               <td style="text-align:right;">
                 <div class="tu-tbl-acts" style="justify-content:flex-end;flex-wrap:wrap;">
                   <?php if (!$hasAccess && $isActive): ?>
-                    <button type="button" class="tu-btn tu-btn-p tu-btn-xs" onclick="openGrantModal(<?= (int)$v['id'] ?>, <?= json_encode($fullName) ?>)">Donner accès</button>
+                    <button type="button" class="tu-btn tu-btn-p tu-btn-xs" onclick='openGrantModal(<?= (int)$v['id'] ?>, <?= json_encode($fullName, JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>Donner accès</button>
                   <?php elseif ($hasAccess): ?>
                     <form method="post" style="display:inline;">
                       <input type="hidden" name="action" value="change_role">

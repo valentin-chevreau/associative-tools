@@ -303,6 +303,27 @@ if (!function_exists('audit_log')) {
 }
 
 /**
+ * Formatage lisible d'un numéro de téléphone : groupe les chiffres par 2
+ * (ex: "0766512146" -> "07 66 51 21 46"). Ignore tout ce qui n'est pas un
+ * chiffre (espaces, points, indicatif "+33" conservé tel quel en tête de
+ * groupe s'il est présent) ; ne modifie jamais la valeur stockée en base,
+ * uniquement l'affichage.
+ */
+if (!function_exists('format_phone')) {
+    function format_phone(?string $phone): string {
+        $phone = trim((string)$phone);
+        if ($phone === '') return '';
+
+        $hasPlus = str_starts_with($phone, '+');
+        $digits  = preg_replace('/\D+/', '', $phone);
+        if ($digits === '') return '';
+
+        $grouped = trim(chunk_split($digits, 2, ' '));
+        return $hasPlus ? '+' . $grouped : $grouped;
+    }
+}
+
+/**
  * Compatibilité — anciennement fournie par auth_helper.php (fichier disparu).
  * Wrapper simplifié autour de audit_log() pour les appels historiques
  * log_action($module, $action, $description).
