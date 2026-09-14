@@ -137,12 +137,19 @@ if (!function_exists('is_admin')) {
 
 if (!function_exists('is_admin_plus')) {
     function is_admin_plus(): bool {
-        return !empty($_SESSION['admin_plus']) || !empty($_SESSION['is_admin_plus']);
+        return !empty($_SESSION['admin_plus']) || !empty($_SESSION['is_admin_plus']) || !empty($_SESSION['super_admin']);
+    }
+}
+
+if (!function_exists('is_super_admin')) {
+    function is_super_admin(): bool {
+        return !empty($_SESSION['super_admin']);
     }
 }
 
 if (!function_exists('current_role')) {
     function current_role(): string {
+        if (is_super_admin()) return 'super_admin';
         if (is_admin_plus()) return 'admin_plus';
         if (is_admin()) return 'admin';
         return 'public';
@@ -186,7 +193,7 @@ if (!function_exists('admin_login_with_code')) {
         if (!$volunteer) return false;
 
         $role = (string)$volunteer['role'];
-        if (!in_array($role, ['admin', 'admin_plus'], true)) return false;
+        if (!in_array($role, ['admin', 'admin_plus', 'super_admin'], true)) return false;
 
         $_SESSION['is_admin'] = true;
         $_SESSION['admin_authenticated'] = true;
@@ -195,9 +202,12 @@ if (!function_exists('admin_login_with_code')) {
         $_SESSION['volunteer_id'] = (int)$volunteer['id'];
         $_SESSION['volunteer_name'] = trim($volunteer['first_name'] . ' ' . $volunteer['last_name']);
 
-        if ($role === 'admin_plus') {
+        if ($role === 'admin_plus' || $role === 'super_admin') {
             $_SESSION['admin_plus'] = true;
             $_SESSION['is_admin_plus'] = true;
+        }
+        if ($role === 'super_admin') {
+            $_SESSION['super_admin'] = true;
         }
 
         $pdo->prepare("UPDATE planning_volunteers SET last_login_at = NOW() WHERE id = ?")
@@ -222,6 +232,7 @@ if (!function_exists('admin_logout')) {
             $_SESSION['admin'],
             $_SESSION['admin_plus'],
             $_SESSION['is_admin_plus'],
+            $_SESSION['super_admin'],
             $_SESSION['admin_last_active'],
             $_SESSION['volunteer_id'],
             $_SESSION['volunteer_name']
@@ -252,6 +263,15 @@ if (!function_exists('require_admin')) {
 if (!function_exists('require_admin_plus')) {
     function require_admin_plus(): void {
         if (!is_admin_plus()) {
+            header('Location: ' . suite_login_url());
+            exit;
+        }
+    }
+}
+
+if (!function_exists('require_super_admin')) {
+    function require_super_admin(): void {
+        if (!is_super_admin()) {
             header('Location: ' . suite_login_url());
             exit;
         }

@@ -28,6 +28,9 @@ if (!($pdo instanceof PDO)) {
 
 function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
 
+// Seul un super_admin peut attribuer/retirer le rôle super_admin à quelqu'un d'autre.
+$allowedRoles = is_super_admin() ? ['admin', 'admin_plus', 'super_admin'] : ['admin', 'admin_plus'];
+
 function genAccessCode(): string {
     return str_pad((string)random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
 }
@@ -127,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($action === 'grant_access') {
                 $role = $_POST['role'] ?? '';
-                if (!in_array($role, ['admin', 'admin_plus'], true)) {
+                if (!in_array($role, $allowedRoles, true)) {
                     $errors[] = "Rôle invalide.";
                 } else {
                     $newCode = genAccessCode();
@@ -156,7 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($action === 'change_role') {
                 $role = $_POST['role'] ?? '';
-                if (!in_array($role, ['admin', 'admin_plus'], true)) {
+                if (!in_array($role, $allowedRoles, true)) {
                     $errors[] = "Rôle invalide.";
                 } else {
                     $pdo->prepare("UPDATE planning_volunteers SET role = ? WHERE id = ?")->execute([$role, $volunteerId]);
@@ -343,11 +346,16 @@ suite_nav_render('users', '');
             $hasAccess = $v['role'] !== null;
             $isActive  = (int)$v['is_active'] === 1;
             $roleLabel = match($v['role']) {
-                'admin_plus' => 'Admin+',
-                'admin'      => 'Admin',
-                default      => null,
+                'super_admin' => 'Super admin',
+                'admin_plus'  => 'Admin+',
+                'admin'       => 'Admin',
+                default       => null,
             };
-            $roleBadgeClass = $v['role'] === 'admin_plus' ? 'tu-bdg-amber' : 'tu-bdg-blue';
+            $roleBadgeClass = match($v['role']) {
+                'super_admin' => 'tu-bdg-red',
+                'admin_plus'  => 'tu-bdg-amber',
+                default       => 'tu-bdg-blue',
+            };
           ?>
             <tr style="<?= !$isActive ? 'opacity:.5;' : '' ?>">
               <td>
@@ -384,6 +392,9 @@ suite_nav_render('users', '');
                       <select name="role" class="tu-fsel" style="font-size:11px;" onchange="this.form.submit()">
                         <option value="admin" <?= $v['role']==='admin'?'selected':'' ?>>Admin</option>
                         <option value="admin_plus" <?= $v['role']==='admin_plus'?'selected':'' ?>>Admin+</option>
+                        <?php if (in_array('super_admin', $allowedRoles, true)): ?>
+                          <option value="super_admin" <?= $v['role']==='super_admin'?'selected':'' ?>>Super admin</option>
+                        <?php endif; ?>
                       </select>
                     </form>
                     <form method="post" style="display:inline;" onsubmit="return confirm('Régénérer le code de <?= h(addslashes($fullName)) ?> ?');">
@@ -544,6 +555,9 @@ function switchUserTab(tab) {
           <select name="role" class="tu-input">
             <option value="admin">Admin</option>
             <option value="admin_plus">Admin+ (accès gestion utilisateurs)</option>
+            <?php if (in_array('super_admin', $allowedRoles, true)): ?>
+              <option value="super_admin">Super admin (accès migrations SQL)</option>
+            <?php endif; ?>
           </select>
         </div>
         <div style="font-size:12px;color:var(--tu-ink-300);margin-top:10px;">

@@ -36,9 +36,10 @@ if (!function_exists('is_admin')) {
 if (!function_exists('role_rank')) {
   function role_rank(string $role): int {
     return match ($role) {
-      'admin_plus' => 30,
-      'admin'      => 20,
-      default      => 10,
+      'super_admin' => 40,
+      'admin_plus'  => 30,
+      'admin'       => 20,
+      default       => 10,
     };
   }
 }

@@ -12,18 +12,21 @@ if (!function_exists('suite_nav_render')) {
 function suite_nav_render(string $activeModule = '', string $activeItem = ''): void {
     $base        = function_exists('suite_base') ? suite_base() : '';
     $role        = function_exists('current_role') ? current_role() : 'public';
-    $isAdmin     = in_array($role, ['admin', 'admin_plus'], true);
-    $isAdminPlus = ($role === 'admin_plus');
+    $isAdmin      = in_array($role, ['admin', 'admin_plus', 'super_admin'], true);
+    $isAdminPlus  = in_array($role, ['admin_plus', 'super_admin'], true);
+    $isSuperAdmin = ($role === 'super_admin');
 
     $roleLabel = match($role) {
-        'admin_plus' => 'Admin+',
-        'admin'      => 'Admin',
-        default      => 'Bénévole',
+        'super_admin' => 'Super admin',
+        'admin_plus'  => 'Admin+',
+        'admin'       => 'Admin',
+        default       => 'Bénévole',
     };
     $roleDotClass = match($role) {
-        'admin_plus' => 'admin-plus',
-        'admin'      => '',
-        default      => 'public',
+        'super_admin' => 'admin-plus',
+        'admin_plus'  => 'admin-plus',
+        'admin'       => '',
+        default       => 'public',
     };
 
     $volunteerName = function_exists('current_volunteer_name') ? current_volunteer_name() : '';
@@ -214,6 +217,20 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
       </svg>
       Journal d'audit
     </a>
+
+    <?php if ($isSuperAdmin): ?>
+    <!-- MIGRATIONS SQL -->
+    <a href="<?= h2($base . '/admin/migrations.php') ?>"
+       class="tu-sb-item <?= _mod_active('migrations', $activeModule) ?>"
+       id="snav-migrations">
+      <svg class="tu-sb-ico" viewBox="0 0 24 24">
+        <ellipse cx="12" cy="5" rx="9" ry="3"/>
+        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+      </svg>
+      Migrations SQL
+    </a>
+    <?php endif; ?>
 
     <!-- ADHÉSIONS -->
     <a href="<?= h2($base . '/adhesions/index.php') ?>"
