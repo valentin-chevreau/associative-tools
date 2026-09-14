@@ -324,7 +324,7 @@ suite_nav_render('users', '');
     $permanentVolunteers  = array_values(array_filter($volunteers, fn($v) => $v['presence_status'] !== 'temporaire'));
     $temporaryVolunteers  = array_values(array_filter($volunteers, fn($v) => $v['presence_status'] === 'temporaire'));
 
-    function renderVolunteerTable(array $list): void {
+    function renderVolunteerTable(array $list, array $allowedRoles): void {
       if (empty($list)) {
         echo '<div style="text-align:center;color:var(--tu-ink-300);padding:24px;font-size:13px;">Aucun bénévole dans cette catégorie.</div>';
         return;
@@ -426,13 +426,13 @@ suite_nav_render('users', '');
 
   <div class="tu-tab-panel active" id="tabPanel-permanent">
     <div class="tu-card" style="overflow:hidden;">
-      <?php renderVolunteerTable($permanentVolunteers); ?>
+      <?php renderVolunteerTable($permanentVolunteers, $allowedRoles); ?>
     </div>
   </div>
 
   <div class="tu-tab-panel" id="tabPanel-temporaire">
     <div class="tu-card" style="overflow:hidden;">
-      <?php renderVolunteerTable($temporaryVolunteers); ?>
+      <?php renderVolunteerTable($temporaryVolunteers, $allowedRoles); ?>
     </div>
   </div>
 
