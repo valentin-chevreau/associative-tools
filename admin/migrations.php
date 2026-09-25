@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'boots
 
 // ── Modules scannés (sous-modules + racine) ───────────────────────────────────
 $suiteRoot = realpath(__DIR__ . '/..') ?: dirname(__DIR__);
-$modules   = ['caisse', 'planning', 'adhesions', 'subventions', 'logistique', 'prospection'];
+$modules   = ['caisse', 'planning', 'adhesions', 'subventions', 'logistique', 'prospection', 'documents'];
 
 $byModule = [];
 foreach ($modules as $mod) {

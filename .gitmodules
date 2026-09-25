@@ -16,3 +16,6 @@
 [submodule "subventions"]
 	path = subventions
 	url = git@github.com:valentin-chevreau/associative-subventions.git
+[submodule "documents"]
+	path = documents
+	url = git@github.com:valentin-chevreau/documents-associative.git
