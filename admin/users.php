@@ -26,6 +26,9 @@ if (!($pdo instanceof PDO)) {
     exit;
 }
 
+require_once __DIR__ . '/../shared/member_functions.php';
+require_once __DIR__ . '/../shared/volunteer_group_rules.php';
+
 function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
 
 // Seul un super_admin peut attribuer/retirer le rôle super_admin à quelqu'un d'autre.
@@ -33,20 +36,6 @@ $allowedRoles = is_super_admin() ? ['admin', 'admin_plus', 'super_admin'] : ['ad
 
 function genAccessCode(): string {
     return str_pad((string)random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
-}
-
-const MEMBER_FUNCTIONS = [
-    'president'     => 'Président',
-    'tresorier'     => 'Trésorier',
-    'secretaire'    => 'Secrétaire',
-    'membre_ca'     => 'Membre du CA',
-    'membre_bureau' => 'Membre du bureau',
-    'membre_actif'  => 'Membre actif',
-];
-
-function labelFunction(?string $f): string {
-    if ($f === null || $f === '') return '—';
-    return MEMBER_FUNCTIONS[$f] ?? $f; // texte libre si pas dans la liste
 }
 
 function formatPhone(?string $phone): string {
@@ -93,6 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             $newId = (int)$pdo->lastInsertId();
             $fullName = trim("$firstName $lastName");
+            volunteer_groups_sync_auto_memberships($pdo, $newId, $memberFunction !== '' ? $memberFunction : null);
             audit_log('admin', 'create', 'volunteer', $newId, $fullName, ['member_function' => $memberFunction, 'presence_status' => $presenceStatus]);
             $success = "Bénévole « $fullName » créé.";
         }
@@ -117,6 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $pdo->prepare("UPDATE planning_volunteers SET member_function = ?, presence_status = ? WHERE id = ?")
                     ->execute([$memberFunction !== '' ? $memberFunction : null, $presenceStatus, $volunteerId]);
+                volunteer_groups_sync_auto_memberships($pdo, $volunteerId, $memberFunction !== '' ? $memberFunction : null);
                 audit_log('admin', 'update', 'volunteer', $volunteerId, $fullName, ['member_function' => $memberFunction, 'presence_status' => $presenceStatus]);
                 $success = "Profil mis à jour pour $fullName.";
             }
@@ -233,6 +224,35 @@ $pageTitle = 'Utilisateurs — Touraine-Ukraine';
       @media (max-width: 900px) {
         body.tu-v2 .tu-main { margin-left: 0; padding: 16px; padding-top: 70px; }
       }
+
+      /* Sélecteur custom (remplace la liste native du <select>, non stylable) */
+      .tu-select-wrap { position: relative; }
+      .tu-select-wrap select.tu-select-native {
+        position: absolute; inset: 0; width: 100%; height: 100%;
+        opacity: 0; pointer-events: none;
+      }
+      .tu-select-trigger {
+        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        cursor: pointer; user-select: none;
+      }
+      .tu-select-trigger .tu-select-chevron { flex-shrink: 0; color: var(--tu-ink-300); transition: transform .15s; }
+      .tu-select-wrap.open .tu-select-trigger { border-color: var(--tu-amber-300); }
+      .tu-select-wrap.open .tu-select-trigger .tu-select-chevron { transform: rotate(180deg); }
+      .tu-select-panel {
+        display: none; position: fixed; z-index: 2100;
+        background: #fff; border: 1.5px solid var(--tu-ink-100); border-radius: var(--tu-r-sm);
+        box-shadow: var(--tu-shadow-lg); max-height: 260px; overflow-y: auto; padding: 4px;
+      }
+      .tu-select-panel.open { display: block; }
+      .tu-select-opt {
+        display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        padding: 9px 12px; font-size: 13px; font-weight: 500; color: var(--tu-ink-900);
+        border-radius: 6px; cursor: pointer;
+      }
+      .tu-select-opt:hover, .tu-select-opt.focused { background: var(--tu-sand-50); }
+      .tu-select-opt.selected { color: var(--tu-amber-700); font-weight: 700; }
+      .tu-select-opt .tu-select-check { color: var(--tu-amber-600); font-weight: 800; visibility: hidden; }
+      .tu-select-opt.selected .tu-select-check { visibility: visible; }
     </style>
 </head>
 <body class="tu-v2">
@@ -250,6 +270,7 @@ suite_nav_render('users', '');
     <span class="tu-bc-cur">Utilisateurs</span>
   </div>
   <div class="tu-topbar-acts">
+    <a href="groups.php" class="tu-btn tu-btn-s tu-btn-sm">Groupes</a>
     <button class="tu-btn tu-btn-p tu-btn-sm" onclick="openCreateModal()">+ Nouveau bénévole</button>
   </div>
 </div>
@@ -367,7 +388,7 @@ suite_nav_render('users', '');
                 </div>
               </td>
               <td style="font-size:12.5px;">
-                <?= h(labelFunction($v['member_function'])) ?>
+                <?= h(member_function_label($v['member_function'])) ?>
                 <button type="button" onclick='openEditProfileModal(<?= (int)$v['id'] ?>, <?= json_encode($v['member_function'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= json_encode($v['presence_status'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= json_encode($fullName, JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'
                         style="background:none;border:none;color:var(--tu-ink-300);cursor:pointer;font-size:11px;text-decoration:underline;padding:0;margin-left:4px;">éditer</button>
               </td>
@@ -476,21 +497,25 @@ function switchUserTab(tab) {
         </div>
         <div class="tu-form-field" style="margin-top:12px;">
           <span class="tu-lbl">Fonction</span>
-          <select name="member_function" class="tu-input" id="createFunctionSelect" onchange="document.getElementById('createFunctionCustom').style.display=this.value==='__custom'?'block':'none'">
-            <option value="">— Aucune —</option>
-            <?php foreach (MEMBER_FUNCTIONS as $key => $label): ?>
-              <option value="<?= h($key) ?>"><?= h($label) ?></option>
-            <?php endforeach; ?>
-            <option value="__custom">Autre…</option>
-          </select>
+          <div class="tu-select-wrap">
+            <select name="member_function" class="tu-input tu-select-native tu-select-enhance" id="createFunctionSelect" onchange="document.getElementById('createFunctionCustom').style.display=this.value==='__custom'?'block':'none'">
+              <option value="">— Aucune —</option>
+              <?php foreach (MEMBER_FUNCTIONS as $key => $label): ?>
+                <option value="<?= h($key) ?>"><?= h($label) ?></option>
+              <?php endforeach; ?>
+              <option value="__custom">Autre…</option>
+            </select>
+          </div>
           <input type="text" name="member_function_custom" id="createFunctionCustom" class="tu-input" style="display:none;margin-top:8px;" placeholder="Préciser la fonction…">
         </div>
         <div class="tu-form-field" style="margin-top:12px;">
           <span class="tu-lbl">Statut de présence</span>
-          <select name="presence_status" class="tu-input">
-            <option value="permanent">Permanent</option>
-            <option value="temporaire">Temporaire (collecte ponctuelle, chargement…)</option>
-          </select>
+          <div class="tu-select-wrap">
+            <select name="presence_status" class="tu-input tu-select-native tu-select-enhance" id="createPresenceSelect">
+              <option value="permanent">Permanent</option>
+              <option value="temporaire">Temporaire (collecte ponctuelle, chargement…)</option>
+            </select>
+          </div>
         </div>
       </div>
       <div style="padding:14px 20px;border-top:1px solid var(--tu-ink-100);display:flex;justify-content:flex-end;gap:8px;">
@@ -514,21 +539,25 @@ function switchUserTab(tab) {
       <div style="padding:20px;">
         <div class="tu-form-field">
           <span class="tu-lbl">Fonction</span>
-          <select name="member_function" class="tu-input" id="editFunctionSelect" onchange="document.getElementById('editFunctionCustom').style.display=this.value==='__custom'?'block':'none'">
-            <option value="">— Aucune —</option>
-            <?php foreach (MEMBER_FUNCTIONS as $key => $label): ?>
-              <option value="<?= h($key) ?>"><?= h($label) ?></option>
-            <?php endforeach; ?>
-            <option value="__custom">Autre…</option>
-          </select>
+          <div class="tu-select-wrap">
+            <select name="member_function" class="tu-input tu-select-native tu-select-enhance" id="editFunctionSelect" onchange="document.getElementById('editFunctionCustom').style.display=this.value==='__custom'?'block':'none'">
+              <option value="">— Aucune —</option>
+              <?php foreach (MEMBER_FUNCTIONS as $key => $label): ?>
+                <option value="<?= h($key) ?>"><?= h($label) ?></option>
+              <?php endforeach; ?>
+              <option value="__custom">Autre…</option>
+            </select>
+          </div>
           <input type="text" name="member_function_custom" id="editFunctionCustom" class="tu-input" style="display:none;margin-top:8px;" placeholder="Préciser la fonction…">
         </div>
         <div class="tu-form-field" style="margin-top:12px;">
           <span class="tu-lbl">Statut de présence</span>
-          <select name="presence_status" class="tu-input" id="editPresenceSelect">
-            <option value="permanent">Permanent</option>
-            <option value="temporaire">Temporaire (collecte ponctuelle, chargement…)</option>
-          </select>
+          <div class="tu-select-wrap">
+            <select name="presence_status" class="tu-input tu-select-native tu-select-enhance" id="editPresenceSelect">
+              <option value="permanent">Permanent</option>
+              <option value="temporaire">Temporaire (collecte ponctuelle, chargement…)</option>
+            </select>
+          </div>
         </div>
       </div>
       <div style="padding:14px 20px;border-top:1px solid var(--tu-ink-100);display:flex;justify-content:flex-end;gap:8px;">
@@ -600,10 +629,128 @@ function openEditProfileModal(id, currentFunction, currentStatus, name) {
     fnCustom.value = '';
   }
 
-  document.getElementById('editPresenceSelect').value = currentStatus || 'permanent';
+  if (fnSelect._syncCustomSelect) fnSelect._syncCustomSelect();
+
+  const presSelect = document.getElementById('editPresenceSelect');
+  presSelect.value = currentStatus || 'permanent';
+  if (presSelect._syncCustomSelect) presSelect._syncCustomSelect();
+
   document.getElementById('editProfileModalOverlay').style.display = 'flex';
 }
 function closeEditProfileModal() { document.getElementById('editProfileModalOverlay').style.display = 'none'; }
+
+/* ── Sélecteur custom : remplace le rendu natif (non stylable) du <select> ──
+   par une liste déroulante à l'apparence de l'app. Le <select> d'origine
+   reste dans le DOM (invisible) : il continue de porter la valeur soumise
+   par le formulaire, donc rien d'autre à changer côté PHP/POST. */
+(function () {
+  function enhanceSelect(select) {
+    const wrap = select.closest('.tu-select-wrap');
+    if (!wrap) return;
+
+    const trigger = document.createElement('div');
+    trigger.className = 'tu-input tu-select-trigger';
+    trigger.tabIndex = 0;
+    trigger.innerHTML = '<span class="tu-select-label"></span>' +
+      '<svg class="tu-select-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>';
+    wrap.appendChild(trigger);
+
+    const panel = document.createElement('div');
+    panel.className = 'tu-select-panel';
+    document.body.appendChild(panel);
+
+    const label = trigger.querySelector('.tu-select-label');
+
+    function buildOptions() {
+      panel.innerHTML = '';
+      Array.from(select.options).forEach(function (opt) {
+        const row = document.createElement('div');
+        row.className = 'tu-select-opt' + (opt.value === select.value ? ' selected' : '');
+        row.dataset.value = opt.value;
+        const textSpan = document.createElement('span');
+        textSpan.textContent = opt.text;
+        const checkSpan = document.createElement('span');
+        checkSpan.className = 'tu-select-check';
+        checkSpan.textContent = '✓';
+        row.appendChild(textSpan);
+        row.appendChild(checkSpan);
+        row.addEventListener('mousedown', function (e) {
+          e.preventDefault();
+          select.value = opt.value;
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+          sync();
+          close();
+        });
+        panel.appendChild(row);
+      });
+    }
+
+    function sync() {
+      const opt = select.options[select.selectedIndex];
+      label.textContent = opt ? opt.text : '';
+      Array.from(panel.children).forEach(function (row) {
+        row.classList.toggle('selected', row.dataset.value === select.value);
+      });
+    }
+
+    /* Le panneau est déplacé dans <body> (pas dans .tu-select-wrap) pour échapper
+       au conteneur scrollable/`overflow:hidden` des modales, qui sinon le
+       rognait (liste "coupée"). Sa position à l'écran est donc calculée en JS
+       à chaque ouverture, avec bascule au-dessus du champ si besoin de place. */
+    function reposition() {
+      const rect = trigger.getBoundingClientRect();
+      const margin = 8;
+      const spaceBelow = window.innerHeight - rect.bottom - margin;
+      const spaceAbove = rect.top - margin;
+      const desired = 260;
+      panel.style.left = Math.round(rect.left) + 'px';
+      panel.style.width = Math.round(rect.width) + 'px';
+      if (spaceBelow >= 160 || spaceBelow >= spaceAbove) {
+        panel.style.top = Math.round(rect.bottom + 4) + 'px';
+        panel.style.bottom = '';
+        panel.style.maxHeight = Math.max(120, Math.min(desired, spaceBelow)) + 'px';
+      } else {
+        panel.style.top = '';
+        panel.style.bottom = Math.round(window.innerHeight - rect.top + 4) + 'px';
+        panel.style.maxHeight = Math.max(120, Math.min(desired, spaceAbove)) + 'px';
+      }
+    }
+
+    function open() {
+      wrap.classList.add('open');
+      buildOptions();
+      sync();
+      panel.classList.add('open');
+      reposition();
+    }
+    function close() {
+      wrap.classList.remove('open');
+      panel.classList.remove('open');
+    }
+    function toggle() { wrap.classList.contains('open') ? close() : open(); }
+
+    trigger.addEventListener('click', toggle);
+    trigger.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+      else if (e.key === 'Escape') close();
+    });
+    document.addEventListener('click', function (e) {
+      if (!wrap.contains(e.target) && !panel.contains(e.target)) close();
+    });
+    window.addEventListener('resize', function () {
+      if (wrap.classList.contains('open')) close();
+    });
+    window.addEventListener('scroll', function (e) {
+      if (wrap.classList.contains('open') && !panel.contains(e.target)) close();
+    }, true);
+
+    buildOptions();
+    sync();
+    select._syncCustomSelect = sync;
+  }
+
+  document.querySelectorAll('select.tu-select-enhance').forEach(enhanceSelect);
+})();
 </script>
 
 </div><!-- /tu-main -->
