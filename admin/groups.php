@@ -257,19 +257,35 @@ $pageTitle = 'Groupes — Touraine-Ukraine';
         body.tu-v2 .tu-main { margin-left: 0; padding: 16px; padding-top: 70px; }
       }
       .grp-member {
-        display: flex; align-items: center; gap: 8px; padding: 6px 4px;
-        border-bottom: 1px solid var(--tu-ink-50); font-size: 12.5px;
-        border-radius: 6px; transition: background-color .5s;
+        display: flex; align-items: center; gap: 10px; padding: 8px 8px;
+        font-size: 12.5px; color: var(--tu-ink-900); cursor: pointer;
+        border-radius: 8px; transition: background-color .2s;
       }
-      .grp-member:last-child { border-bottom: none; }
+      .grp-member + .grp-member { margin-top: 1px; }
+      .grp-member:hover { background: var(--tu-sand-50); }
       .grp-member.saved { background: var(--tu-green-soft); }
       .grp-member.error { background: var(--tu-red-soft); }
       .grp-member.saving { opacity: .6; }
       .grp-member .grp-member-name { flex: 1; }
-      .grp-member .grp-save-hint { font-size: 10px; color: var(--tu-ink-300); visibility: hidden; }
+      .grp-member .grp-save-hint { font-size: 10px; color: var(--tu-ink-300); visibility: hidden; font-weight: 700; }
       .grp-member.saved .grp-save-hint { visibility: visible; color: var(--tu-green-main); }
       .grp-member.error .grp-save-hint { visibility: visible; color: var(--tu-red-main); }
-      .grp-members-list { max-height: 260px; overflow-y: auto; border: 1px solid var(--tu-ink-100); border-radius: 10px; padding: 4px 10px; margin: 10px 0; }
+      .grp-member input[type=checkbox] {
+        appearance: none; -webkit-appearance: none; flex-shrink: 0; margin: 0;
+        width: 18px; height: 18px; border: 1.5px solid var(--tu-ink-200); border-radius: 5px;
+        background: #fff; cursor: pointer; position: relative;
+        transition: background-color .15s, border-color .15s;
+      }
+      .grp-member input[type=checkbox]:hover { border-color: var(--tu-amber-400); }
+      .grp-member input[type=checkbox]:checked {
+        background: var(--tu-amber-500); border-color: var(--tu-amber-500);
+      }
+      .grp-member input[type=checkbox]:checked::after {
+        content: ''; position: absolute; left: 5px; top: 1px; width: 5px; height: 9px;
+        border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg);
+      }
+      .grp-member input[type=checkbox]:focus-visible { outline: 2px solid var(--tu-amber-300); outline-offset: 2px; }
+      .grp-members-list { max-height: 300px; overflow-y: auto; border: 1px solid var(--tu-ink-100); border-radius: 10px; padding: 6px; margin: 10px 0; }
       .grp-rules summary { cursor: pointer; font-size: 11px; color: var(--tu-ink-300); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 4px 0; }
       .grp-rules summary:hover { color: var(--tu-ink-700); }
       .grp-rules-body { margin-top: 8px; display: flex; flex-direction: column; gap: 10px; padding-top: 8px; border-top: 1px dashed var(--tu-ink-100); }
