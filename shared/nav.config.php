@@ -87,7 +87,9 @@ if (!function_exists('nav_items')) {
     add_if_exists($planningChildren, 'Planning', $root . '/planning/index.php', $base . '/planning/index.php');
 
     // Planning admin (reste sous Planning, groupé "Admin")
-    add_if_exists($planningChildren, 'Gestion des dons',  $root . '/planning/admin/donations.php',    $base . '/planning/admin/donations.php', 'admin_plus', 'Admin');
+    // NB : la gestion des dons a été extraite dans son propre module
+    // top-level "donations" (base unifiée, ne dépend plus de planning) —
+    // voir plus bas, section "Dons".
     add_if_exists($planningChildren, 'Gestion du planning', $root . '/planning/admin/events_list.php',  $base . '/planning/admin/events_list.php', 'admin_plus', 'Admin');
 
     // ======================
@@ -158,6 +160,12 @@ if (!function_exists('nav_items')) {
     add_if_exists($subventionsChildren, 'Documents',      $root . '/subventions/documents/index.php',    $base . '/subventions/documents/index.php', 'admin');
     add_if_exists($subventionsChildren, 'Nouvelle demande', $root . '/subventions/demandes/add.php',    $base . '/subventions/demandes/add.php', 'admin', 'Admin');
     add_if_exists($subventionsChildren, 'Statistiques',     $root . '/subventions/stats.php',           $base . '/subventions/stats.php', 'admin_plus', 'Admin');
+
+    // ======================
+    // Dons (HelloAsso + manuel — module autonome, ADMIN+ uniquement)
+    // ======================
+    $donationsChildren = [];
+    add_if_exists($donationsChildren, 'Gestion des dons', $root . '/donations/index.php', $base . '/donations/index.php', 'admin_plus');
 
     // ======================
     // Prospection (démarchage matériel/dons — ADMIN+ uniquement)
@@ -250,6 +258,17 @@ if (!function_exists('nav_items')) {
         'icon'  => 'briefcase',
         'min_role' => 'admin_plus',
         'children' => $subventionsChildren,
+      ];
+    }
+
+    // Dons (apparaît seulement pour admin+) — module autonome, plus nested
+    // sous Planning (voir commentaire ci-dessus).
+    if (!empty($donationsChildren)) {
+      $items[] = [
+        'label' => 'Dons',
+        'icon'  => 'gift',
+        'min_role' => 'admin_plus',
+        'children' => $donationsChildren,
       ];
     }
 

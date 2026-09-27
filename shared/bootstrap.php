@@ -92,7 +92,16 @@ if (!defined('SUITE_ERROR_HANDLERS_INSTALLED')) {
     });
 }
 
-if (session_status() === PHP_SESSION_NONE) {
+// En CLI (scripts cron), il n'y a ni cookie ni session HTTP qui tienne : on
+// n'essaie pas de démarrer une session (ça ne sert à rien et génère un
+// warning), et surtout on saute la protection globale plus bas (elle tente
+// une redirection HTTP via header(), qui n'a aucun sens hors requête web et
+// coupe le script en plein milieu). Ça permet aux scripts CLI d'inclure
+// bootstrap.php (via _bootstrap_get_pdo() notamment) sans dupliquer les
+// identifiants de connexion ailleurs.
+$suiteIsCli = (PHP_SAPI === 'cli');
+
+if (!$suiteIsCli && session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
@@ -438,7 +447,7 @@ if (!function_exists('log_action')) {
    PROTECTION GLOBALE DE /TOOLS/ (AVEC EXCEPTIONS INTELLIGENTES)
    ==================================================================== */
 
-if (defined('SUITE_MODE') && SUITE_MODE) {
+if (!$suiteIsCli && defined('SUITE_MODE') && SUITE_MODE) {
 
     $current_page = $_SERVER['PHP_SELF'] ?? '';
 
