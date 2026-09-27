@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS adhesions (
     annee YEAR NOT NULL,
     date_adhesion DATE NOT NULL,
     montant DECIMAL(10,2) NOT NULL,
-    mode_paiement ENUM('especes', 'cheque', 'virement', 'cb') NOT NULL,
+    mode_paiement ENUM('especes', 'cheque', 'virement', 'cb', 'helloasso') NOT NULL,
     numero_transaction VARCHAR(50),
     statut ENUM('en_attente', 'valide', 'annule') DEFAULT 'valide',
     notes TEXT,
