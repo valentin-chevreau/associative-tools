@@ -115,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $pdo->prepare("UPDATE planning_volunteers SET first_name = ?, last_name = ?, email = ?, phone = ?, member_function = ?, presence_status = ? WHERE id = ?")
                         ->execute([
                             $firstName,
-                            $lastName !== '' ? $lastName : null,
+                            $lastName, // colonne NOT NULL en base : jamais null, une chaîne vide au pire
                             $email !== '' ? $email : null,
                             $phone !== '' ? $phone : null,
                             $memberFunction !== '' ? $memberFunction : null,
