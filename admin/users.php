@@ -99,17 +99,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $fullName = trim($vol['first_name'] . ' ' . $vol['last_name']);
 
             if ($action === 'update_profile') {
+                $firstName = trim($_POST['first_name'] ?? '');
+                $lastName  = trim($_POST['last_name'] ?? '');
+                $email     = trim($_POST['email'] ?? '');
+                $phone     = trim($_POST['phone'] ?? '');
                 $memberFunctionRaw = trim($_POST['member_function'] ?? '');
                 $memberFunctionCustom = trim($_POST['member_function_custom'] ?? '');
                 $memberFunction = $memberFunctionRaw === '__custom' ? $memberFunctionCustom : $memberFunctionRaw;
                 $presenceStatus = $_POST['presence_status'] ?? 'permanent';
                 if (!in_array($presenceStatus, ['permanent', 'temporaire'], true)) $presenceStatus = 'permanent';
 
-                $pdo->prepare("UPDATE planning_volunteers SET member_function = ?, presence_status = ? WHERE id = ?")
-                    ->execute([$memberFunction !== '' ? $memberFunction : null, $presenceStatus, $volunteerId]);
-                volunteer_groups_sync_auto_memberships($pdo, $volunteerId, $memberFunction !== '' ? $memberFunction : null);
-                audit_log('admin', 'update', 'volunteer', $volunteerId, $fullName, ['member_function' => $memberFunction, 'presence_status' => $presenceStatus]);
-                $success = "Profil mis à jour pour $fullName.";
+                if ($firstName === '') {
+                    $errors[] = "Le prénom est obligatoire.";
+                } else {
+                    $pdo->prepare("UPDATE planning_volunteers SET first_name = ?, last_name = ?, email = ?, phone = ?, member_function = ?, presence_status = ? WHERE id = ?")
+                        ->execute([
+                            $firstName,
+                            $lastName !== '' ? $lastName : null,
+                            $email !== '' ? $email : null,
+                            $phone !== '' ? $phone : null,
+                            $memberFunction !== '' ? $memberFunction : null,
+                            $presenceStatus,
+                            $volunteerId,
+                        ]);
+                    volunteer_groups_sync_auto_memberships($pdo, $volunteerId, $memberFunction !== '' ? $memberFunction : null);
+                    $fullName = trim("$firstName $lastName");
+                    audit_log('admin', 'update', 'volunteer', $volunteerId, $fullName, ['member_function' => $memberFunction, 'presence_status' => $presenceStatus]);
+                    $success = "Profil mis à jour pour $fullName.";
+                }
             }
 
             if ($action === 'toggle_active') {
@@ -206,6 +223,24 @@ $volunteers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $totalWithAccess = count(array_filter($volunteers, fn($v) => $v['role'] !== null));
 $totalActive     = count(array_filter($volunteers, fn($v) => (int)$v['is_active'] === 1));
 $totalTemp       = count(array_filter($volunteers, fn($v) => $v['presence_status'] === 'temporaire'));
+
+// ── Ouverture directe de la fiche d'un bénévole (?edit=ID) ──────────────────
+// Utilisé par le lien "Modifier" du module planning (liste des bénévoles),
+// pour renvoyer vers ce point d'entrée unique plutôt que vers son propre
+// formulaire d'édition.
+$editTargetId = isset($_GET['edit']) ? (int)$_GET['edit'] : 0;
+$editTarget = null;
+if ($editTargetId > 0) {
+    foreach ($volunteers as $v) {
+        if ((int)$v['id'] === $editTargetId) { $editTarget = $v; break; }
+    }
+    if ($editTarget === null) {
+        // Pas dans la page courante (filtres actifs) : on va le chercher directement.
+        $q = $pdo->prepare("SELECT id, first_name, last_name, email, phone, access_code, role, member_function, presence_status, code_created_at, last_login_at, is_active FROM planning_volunteers WHERE id = ?");
+        $q->execute([$editTargetId]);
+        $editTarget = $q->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+}
 
 $pageTitle = 'Utilisateurs — Touraine-Ukraine';
 ?>
@@ -389,7 +424,7 @@ suite_nav_render('users', '');
               </td>
               <td style="font-size:12.5px;">
                 <?= h(member_function_label($v['member_function'])) ?>
-                <button type="button" onclick='openEditProfileModal(<?= (int)$v['id'] ?>, <?= json_encode($v['member_function'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= json_encode($v['presence_status'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= json_encode($fullName, JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'
+                <button type="button" onclick='openEditProfileModal(<?= (int)$v['id'] ?>, <?= json_encode($v['member_function'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= json_encode($v['presence_status'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= json_encode($fullName, JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= json_encode($v['first_name'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= json_encode($v['last_name'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= json_encode($v['email'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= json_encode($v['phone'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'
                         style="background:none;border:none;color:var(--tu-ink-300);cursor:pointer;font-size:11px;text-decoration:underline;padding:0;margin-left:4px;">éditer</button>
               </td>
               <td>
@@ -537,7 +572,25 @@ function switchUserTab(tab) {
       <input type="hidden" name="action" value="update_profile">
       <input type="hidden" name="volunteer_id" id="editProfileVolunteerId">
       <div style="padding:20px;">
-        <div class="tu-form-field">
+        <div class="tu-form-grid" style="gap:12px;">
+          <div class="tu-form-field">
+            <span class="tu-lbl">Prénom *</span>
+            <input type="text" name="first_name" id="editFirstName" class="tu-input" required>
+          </div>
+          <div class="tu-form-field">
+            <span class="tu-lbl">Nom</span>
+            <input type="text" name="last_name" id="editLastName" class="tu-input">
+          </div>
+        </div>
+        <div class="tu-form-field" style="margin-top:12px;">
+          <span class="tu-lbl">Email</span>
+          <input type="email" name="email" id="editEmail" class="tu-input">
+        </div>
+        <div class="tu-form-field" style="margin-top:12px;">
+          <span class="tu-lbl">Téléphone</span>
+          <input type="text" name="phone" id="editPhone" class="tu-input">
+        </div>
+        <div class="tu-form-field" style="margin-top:12px;">
           <span class="tu-lbl">Fonction</span>
           <div class="tu-select-wrap">
             <select name="member_function" class="tu-input tu-select-native tu-select-enhance" id="editFunctionSelect" onchange="document.getElementById('editFunctionCustom').style.display=this.value==='__custom'?'block':'none'">
@@ -612,9 +665,13 @@ function openGrantModal(id, name) {
 }
 function closeGrantModal() { document.getElementById('grantModalOverlay').style.display = 'none'; }
 
-function openEditProfileModal(id, currentFunction, currentStatus, name) {
+function openEditProfileModal(id, currentFunction, currentStatus, name, firstName, lastName, email, phone) {
   document.getElementById('editProfileVolunteerId').value = id;
   document.getElementById('editProfileName').textContent = name;
+  document.getElementById('editFirstName').value = firstName || '';
+  document.getElementById('editLastName').value = lastName || '';
+  document.getElementById('editEmail').value = email || '';
+  document.getElementById('editPhone').value = phone || '';
 
   const fnSelect = document.getElementById('editFunctionSelect');
   const fnCustom = document.getElementById('editFunctionCustom');
@@ -638,6 +695,22 @@ function openEditProfileModal(id, currentFunction, currentStatus, name) {
   document.getElementById('editProfileModalOverlay').style.display = 'flex';
 }
 function closeEditProfileModal() { document.getElementById('editProfileModalOverlay').style.display = 'none'; }
+
+<?php if ($editTarget): ?>
+document.addEventListener('DOMContentLoaded', function () {
+  switchUserTab(<?= json_encode($editTarget['presence_status'] === 'temporaire' ? 'temporaire' : 'permanent') ?>);
+  openEditProfileModal(
+    <?= (int)$editTarget['id'] ?>,
+    <?= json_encode($editTarget['member_function'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
+    <?= json_encode($editTarget['presence_status'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
+    <?= json_encode(trim($editTarget['first_name'] . ' ' . $editTarget['last_name']), JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
+    <?= json_encode($editTarget['first_name'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
+    <?= json_encode($editTarget['last_name'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
+    <?= json_encode($editTarget['email'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
+    <?= json_encode($editTarget['phone'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>
+  );
+});
+<?php endif; ?>
 
 /* ── Sélecteur custom : remplace le rendu natif (non stylable) du <select> ──
    par une liste déroulante à l'apparence de l'app. Le <select> d'origine
