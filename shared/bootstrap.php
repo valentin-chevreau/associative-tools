@@ -12,6 +12,81 @@ declare(strict_types=1);
  * - Protège l'accès à /tools/ avec exceptions intelligentes
  */
 
+/* --------------------------------------------------------------------------
+ * Interrupteur de debug PHP (désactivé par défaut).
+ * Pour voir les erreurs PHP à l'écran sur ce serveur, le temps de déboguer :
+ *   touch shared/DEBUG_ON
+ * Pour les faire disparaître à nouveau (à ne JAMAIS laisser actif en
+ * permanence sur un site public — ça peut exposer des chemins serveur,
+ * des requêtes SQL, etc.) :
+ *   rm shared/DEBUG_ON
+ * -------------------------------------------------------------------------- */
+if (is_file(__DIR__ . '/DEBUG_ON')) {
+    ini_set('display_errors', '1');
+    ini_set('display_startup_errors', '1');
+    error_reporting(E_ALL);
+}
+
+/* --------------------------------------------------------------------------
+ * Filet de sécurité : plus jamais de page blanche.
+ * Toute exception non rattrapée ou erreur fatale PHP est transformée en une
+ * page d'erreur lisible (au lieu d'un écran blanc silencieux), et l'erreur
+ * complète est systématiquement écrite dans les logs serveur (error_log),
+ * qu'on soit en debug ou non. Le détail technique n'est affiché à l'écran
+ * que si shared/DEBUG_ON est présent (voir ci-dessus) — jamais en public.
+ * -------------------------------------------------------------------------- */
+if (!function_exists('suite_render_error_page')) {
+    function suite_render_error_page(string $detail = ''): void {
+        if (!headers_sent()) {
+            http_response_code(500);
+            header('Content-Type: text/html; charset=utf-8');
+        }
+        while (ob_get_level() > 0) { @ob_end_clean(); }
+        $debugOn = is_file(__DIR__ . '/DEBUG_ON');
+        echo '<!doctype html><html lang="fr"><head><meta charset="utf-8">'
+           . '<title>Erreur — Suite Touraine-Ukraine</title>'
+           . '<meta name="viewport" content="width=device-width, initial-scale=1">'
+           . '<style>'
+           . 'body{font-family:system-ui,-apple-system,sans-serif;background:#fdf8f0;color:#3a2e22;'
+           . 'display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px;}'
+           . '.box{max-width:600px;background:#fff;border:1.5px solid #eadfce;border-radius:16px;padding:32px;'
+           . 'box-shadow:0 8px 24px rgba(0,0,0,.06);}'
+           . 'h1{font-size:20px;margin:0 0 8px;}'
+           . 'p{font-size:14px;line-height:1.5;color:#6b5d4d;}'
+           . 'pre{white-space:pre-wrap;word-break:break-word;background:#faf3e6;border-radius:8px;padding:12px;font-size:12px;overflow:auto;}'
+           . 'a{color:#c07a2a;font-weight:600;text-decoration:none;}'
+           . '</style></head><body><div class="box">'
+           . '<h1>Une erreur est survenue</h1>'
+           . '<p>Quelque chose s\'est mal passé de notre côté. Vous pouvez revenir en arrière et réessayer ; '
+           . 'si le problème persiste, signalez-le avec l\'heure exacte de l\'erreur.</p>';
+        if ($debugOn && $detail !== '') {
+            echo '<pre>' . htmlspecialchars($detail, ENT_QUOTES, 'UTF-8') . '</pre>';
+        }
+        echo '<p><a href="javascript:history.back()">← Revenir en arrière</a></p>'
+           . '</div></body></html>';
+    }
+}
+
+if (!defined('SUITE_ERROR_HANDLERS_INSTALLED')) {
+    define('SUITE_ERROR_HANDLERS_INSTALLED', true);
+
+    set_exception_handler(function (Throwable $e) {
+        $detail = get_class($e) . ': ' . $e->getMessage() . "\n" . $e->getFile() . ':' . $e->getLine() . "\n" . $e->getTraceAsString();
+        error_log('[UNCAUGHT] ' . $detail);
+        suite_render_error_page($detail);
+        exit(1);
+    });
+
+    register_shutdown_function(function () {
+        $err = error_get_last();
+        if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+            $detail = $err['message'] . ' in ' . $err['file'] . ' on line ' . $err['line'];
+            error_log('[FATAL] ' . $detail);
+            suite_render_error_page($detail);
+        }
+    });
+}
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
