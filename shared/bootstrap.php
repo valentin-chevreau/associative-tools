@@ -42,7 +42,12 @@ if (!function_exists('suite_render_error_page')) {
             header('Content-Type: text/html; charset=utf-8');
         }
         while (ob_get_level() > 0) { @ob_end_clean(); }
-        $debugOn = is_file(__DIR__ . '/DEBUG_ON');
+        // Détail technique affiché si le mode debug est activé (shared/DEBUG_ON),
+        // ou automatiquement pour un super_admin connecté (pratique pour déboguer
+        // en prod sans activer le mode debug pour tout le monde) — jamais pour un
+        // simple admin/admin_plus, ni pour un visiteur non connecté.
+        $debugOn = is_file(__DIR__ . '/DEBUG_ON')
+            || (function_exists('is_super_admin') && is_super_admin());
         echo '<!doctype html><html lang="fr"><head><meta charset="utf-8">'
            . '<title>Erreur — Suite Touraine-Ukraine</title>'
            . '<meta name="viewport" content="width=device-width, initial-scale=1">'
