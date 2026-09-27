@@ -83,10 +83,6 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
          class="tu-sb-item <?= _nav_active('planning-create', $activeItem, $activeModule, 'planning') ?>">
         Créer un événement
       </a>
-      <a href="<?= h2($base . '/planning/admin/donations.php') ?>"
-         class="tu-sb-item <?= _nav_active('planning-dons', $activeItem, $activeModule, 'planning') ?>">
-        Dons
-      </a>
       <a href="<?= h2($base . '/planning/admin/report_activity.php') ?>"
          class="tu-sb-item <?= _nav_active('planning-cra', $activeItem, $activeModule, 'planning') ?>">
         Compte-rendu d'activité
@@ -189,49 +185,7 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
       Annuaire
     </a>
 
-    <div class="tu-sb-div"></div>
-    <span class="tu-sb-sec">Administration</span>
-
     <?php if ($isAdmin): ?>
-    <!-- UTILISATEURS -->
-    <a href="<?= h2($base . '/admin/users.php') ?>"
-       class="tu-sb-item <?= _mod_active('users', $activeModule) ?>"
-       id="snav-users">
-      <svg class="tu-sb-ico" viewBox="0 0 24 24">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-        <circle cx="9" cy="7" r="4"/>
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
-      </svg>
-      Utilisateurs
-    </a>
-
-    <!-- JOURNAL D'AUDIT -->
-    <a href="<?= h2($base . '/admin/audit_log.php') ?>"
-       class="tu-sb-item <?= _mod_active('audit', $activeModule) ?>"
-       id="snav-audit">
-      <svg class="tu-sb-ico" viewBox="0 0 24 24">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-        <polyline points="14 2 14 8 20 8"/>
-        <line x1="16" y1="13" x2="8" y2="13"/>
-        <line x1="16" y1="17" x2="8" y2="17"/>
-      </svg>
-      Journal d'audit
-    </a>
-
-    <?php if ($isSuperAdmin): ?>
-    <!-- MIGRATIONS SQL -->
-    <a href="<?= h2($base . '/admin/migrations.php') ?>"
-       class="tu-sb-item <?= _mod_active('migrations', $activeModule) ?>"
-       id="snav-migrations">
-      <svg class="tu-sb-ico" viewBox="0 0 24 24">
-        <ellipse cx="12" cy="5" rx="9" ry="3"/>
-        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
-        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
-      </svg>
-      Migrations SQL
-    </a>
-    <?php endif; ?>
-
     <!-- ADHÉSIONS -->
     <a href="<?= h2($base . '/adhesions/index.php') ?>"
        class="tu-sb-item <?= _mod_active('adhesions', $activeModule) ?>"
@@ -258,39 +212,6 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
     </div>
     <?php endif; ?>
 
-    <!-- DOCUMENTS -->
-    <?php if ($isAdmin): ?>
-    <a href="<?= h2($base . '/documents/index.php') ?>"
-       class="tu-sb-item <?= _mod_active('documents', $activeModule) ?>"
-       id="snav-documents">
-      <svg class="tu-sb-ico" viewBox="0 0 24 24">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-        <polyline points="14 2 14 8 20 8"/>
-        <line x1="9" y1="13" x2="15" y2="13"/>
-        <line x1="9" y1="17" x2="13" y2="17"/>
-      </svg>
-      Documents
-    </a>
-    <?php if ($activeModule === 'documents'): ?>
-    <div class="tu-sb-sub-nav">
-      <a href="<?= h2($base . '/documents/index.php') ?>"
-         class="tu-sb-item <?= _nav_active('documents-list', $activeItem, $activeModule, 'documents') ?>">
-        Tous les documents
-      </a>
-      <?php if ($isAdminPlus): ?>
-      <a href="<?= h2($base . '/documents/signatories.php') ?>"
-         class="tu-sb-item <?= _nav_active('documents-signatories', $activeItem, $activeModule, 'documents') ?>">
-        Signataires
-      </a>
-      <a href="<?= h2($base . '/documents/settings.php') ?>"
-         class="tu-sb-item <?= _nav_active('documents-settings', $activeItem, $activeModule, 'documents') ?>">
-        Entête / pied de page
-      </a>
-      <?php endif; ?>
-    </div>
-    <?php endif; ?>
-    <?php endif; ?>
-
     <!-- SUBVENTIONS -->
     <a href="<?= h2($base . '/subventions/index.php') ?>"
        class="tu-sb-item <?= _mod_active('subventions', $activeModule) ?>"
@@ -314,6 +235,23 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
       </a>
       <?php endif; ?>
     </div>
+    <?php endif; ?>
+    <?php endif; ?>
+
+    <?php if ($isAdminPlus): ?>
+    <!-- DONS (module autonome — extrait de planning, base unifiée) -->
+    <a href="<?= h2($base . '/donations/index.php') ?>"
+       class="tu-sb-item <?= _mod_active('donations', $activeModule) ?>"
+       id="snav-donations">
+      <svg class="tu-sb-ico" viewBox="0 0 24 24">
+        <path d="M20 12v9H4v-9"/>
+        <path d="M2 7h20v5H2z"/>
+        <path d="M12 22V7"/>
+        <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+        <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+      </svg>
+      Dons
+    </a>
     <?php endif; ?>
 
     <?php if ($isAdminPlus): ?>
@@ -362,6 +300,82 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
       </a>
     </div>
     <?php endif; ?>
+    <?php endif; ?>
+
+    <!-- DOCUMENTS -->
+    <?php if ($isAdmin): ?>
+    <a href="<?= h2($base . '/documents/index.php') ?>"
+       class="tu-sb-item <?= _mod_active('documents', $activeModule) ?>"
+       id="snav-documents">
+      <svg class="tu-sb-ico" viewBox="0 0 24 24">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="9" y1="13" x2="15" y2="13"/>
+        <line x1="9" y1="17" x2="13" y2="17"/>
+      </svg>
+      Documents
+    </a>
+    <?php if ($activeModule === 'documents'): ?>
+    <div class="tu-sb-sub-nav">
+      <a href="<?= h2($base . '/documents/index.php') ?>"
+         class="tu-sb-item <?= _nav_active('documents-list', $activeItem, $activeModule, 'documents') ?>">
+        Tous les documents
+      </a>
+      <?php if ($isAdminPlus): ?>
+      <a href="<?= h2($base . '/documents/signatories.php') ?>"
+         class="tu-sb-item <?= _nav_active('documents-signatories', $activeItem, $activeModule, 'documents') ?>">
+        Signataires
+      </a>
+      <a href="<?= h2($base . '/documents/settings.php') ?>"
+         class="tu-sb-item <?= _nav_active('documents-settings', $activeItem, $activeModule, 'documents') ?>">
+        Entête / pied de page
+      </a>
+      <?php endif; ?>
+    </div>
+    <?php endif; ?>
+    <?php endif; ?>
+
+    <div class="tu-sb-div"></div>
+    <span class="tu-sb-sec">Administration</span>
+
+    <?php if ($isAdmin): ?>
+    <!-- UTILISATEURS -->
+    <a href="<?= h2($base . '/admin/users.php') ?>"
+       class="tu-sb-item <?= _mod_active('users', $activeModule) ?>"
+       id="snav-users">
+      <svg class="tu-sb-ico" viewBox="0 0 24 24">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+      Utilisateurs
+    </a>
+
+    <!-- JOURNAL D'AUDIT -->
+    <a href="<?= h2($base . '/admin/audit_log.php') ?>"
+       class="tu-sb-item <?= _mod_active('audit', $activeModule) ?>"
+       id="snav-audit">
+      <svg class="tu-sb-ico" viewBox="0 0 24 24">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+      </svg>
+      Journal d'audit
+    </a>
+
+    <?php if ($isSuperAdmin): ?>
+    <!-- MIGRATIONS SQL -->
+    <a href="<?= h2($base . '/admin/migrations.php') ?>"
+       class="tu-sb-item <?= _mod_active('migrations', $activeModule) ?>"
+       id="snav-migrations">
+      <svg class="tu-sb-ico" viewBox="0 0 24 24">
+        <ellipse cx="12" cy="5" rx="9" ry="3"/>
+        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+      </svg>
+      Migrations SQL
+    </a>
     <?php endif; ?>
 
     <?php endif; ?>
