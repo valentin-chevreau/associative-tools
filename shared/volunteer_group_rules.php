@@ -67,17 +67,21 @@ if (!function_exists('volunteer_groups_sync_auto_memberships')) {
         // 2) Cascade groupe -> groupe (implies_group_id), jusqu'à stabilisation (max 10 tours,
         //    largement suffisant — évite juste une boucle infinie en cas de cycle mal configuré)
         for ($i = 0; $i < 10; $i++) {
+            // Paramètres positionnels (et non nommés) : PDO/MySQL en préparation
+            // native (ATTR_EMULATE_PREPARES = false) rejette la réutilisation
+            // d'un même paramètre nommé plusieurs fois dans une requête
+            // ("Invalid parameter number").
             $stmt = $pdo->prepare("
                 SELECT DISTINCT g.implies_group_id
                 FROM volunteer_group_members m
                 JOIN volunteer_groups g ON g.id = m.group_id
-                WHERE m.volunteer_id = :vid AND g.implies_group_id IS NOT NULL
+                WHERE m.volunteer_id = ? AND g.implies_group_id IS NOT NULL
                   AND NOT EXISTS (
                       SELECT 1 FROM volunteer_group_members m2
-                      WHERE m2.volunteer_id = :vid AND m2.group_id = g.implies_group_id
+                      WHERE m2.volunteer_id = ? AND m2.group_id = g.implies_group_id
                   )
             ");
-            $stmt->execute(['vid' => $volunteerId]);
+            $stmt->execute([$volunteerId, $volunteerId]);
             $toAdd = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
             if (!$toAdd) break;
             $ins = $pdo->prepare("INSERT IGNORE INTO volunteer_group_members (group_id, volunteer_id) VALUES (?, ?)");
