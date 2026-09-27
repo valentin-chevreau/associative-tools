@@ -1,0 +1,20 @@
+name: Déploiement continu — Prod (Touraine-Ukraine)
+
+# Se déclenche à chaque push sur main (dépôt principal), c'est-à-dire au
+# moment où le pointeur de submodule est mis à jour — exactement la
+# dernière étape du workflow habituel (commit "Bump ... submodule").
+#
+# Tourne sur un runner auto-hébergé installé directement sur le VPS
+# (voir deploy/README.md) : aucun port entrant à ouvrir, aucun secret
+# SSH à stocker dans GitHub.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {} # permet aussi de relancer le déploiement manuellement depuis GitHub
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Déployer en production
+        run: bash /opt/touraine-ukraine-deploy/deploy-prod.sh
