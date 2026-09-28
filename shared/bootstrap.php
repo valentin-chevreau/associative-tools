@@ -6,7 +6,7 @@ declare(strict_types=1);
 /**
  * shared/bootstrap.php
  * Point central d'authentification pour la suite tools
- * - Codes d'accès gérés en base (planning_volunteers.access_code), plus de codes en dur
+ * - Codes d'accès gérés en base (users.access_code), plus de codes en dur
  * - Détecte automatiquement si on est en mode "suite" ou "standalone"
  * - Unifie l'authentification pour tous les modules
  * - Protège l'accès à /tools/ avec exceptions intelligentes
@@ -257,7 +257,7 @@ if (!function_exists('current_volunteer_name')) {
 }
 
 /**
- * Login avec code (mode suite uniquement) — recherche en base sur planning_volunteers.
+ * Login avec code (mode suite uniquement) — recherche en base sur users.
  * Récupère $pdo s'il existe déjà, sinon se connecte lui-même (voir _bootstrap_get_pdo).
  */
 if (!function_exists('admin_login_with_code')) {
@@ -272,7 +272,7 @@ if (!function_exists('admin_login_with_code')) {
 
         $stmt = $pdo->prepare("
             SELECT id, first_name, last_name, role
-            FROM planning_volunteers
+            FROM users
             WHERE access_code = ? AND role IS NOT NULL AND is_active = 1
             LIMIT 1
         ");
@@ -299,7 +299,7 @@ if (!function_exists('admin_login_with_code')) {
             $_SESSION['super_admin'] = true;
         }
 
-        $pdo->prepare("UPDATE planning_volunteers SET last_login_at = NOW() WHERE id = ?")
+        $pdo->prepare("UPDATE users SET last_login_at = NOW() WHERE id = ?")
             ->execute([(int)$volunteer['id']]);
 
         if (function_exists('audit_log')) {

@@ -99,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'toggl
     $chk->execute([$groupId]);
     $grp = $chk->fetch(PDO::FETCH_ASSOC);
 
-    $volChk = $pdo->prepare("SELECT id FROM planning_volunteers WHERE id = ? AND is_active = 1");
+    $volChk = $pdo->prepare("SELECT id FROM users WHERE id = ? AND is_active = 1");
     $volChk->execute([$volunteerId]);
 
     if (!$grp || !$volChk->fetch()) {
@@ -225,7 +225,7 @@ if ($seededBureauId !== null) {
 
 $volunteers = $pdo->query("
     SELECT id, first_name, last_name, member_function
-    FROM planning_volunteers
+    FROM users
     WHERE is_active = 1
     ORDER BY last_name ASC, first_name ASC
 ")->fetchAll(PDO::FETCH_ASSOC);

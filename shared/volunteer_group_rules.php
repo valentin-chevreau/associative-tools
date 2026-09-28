@@ -115,7 +115,7 @@ if (!function_exists('volunteer_groups_apply_group_functions')) {
         if (!$codes) return;
 
         $placeholders = implode(',', array_fill(0, count($codes), '?'));
-        $stmt = $pdo->prepare("SELECT id FROM planning_volunteers WHERE is_active = 1 AND member_function IN ($placeholders)");
+        $stmt = $pdo->prepare("SELECT id FROM users WHERE is_active = 1 AND member_function IN ($placeholders)");
         $stmt->execute($codes);
         $ins = $pdo->prepare("INSERT IGNORE INTO volunteer_group_members (group_id, volunteer_id) VALUES (?, ?)");
         foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $vid) {

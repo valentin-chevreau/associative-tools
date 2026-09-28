@@ -70,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = "Le prénom et le nom sont obligatoires.";
         } else {
             $ins = $pdo->prepare("
-                INSERT INTO planning_volunteers (first_name, last_name, email, phone, member_function, presence_status, is_active)
+                INSERT INTO users (first_name, last_name, email, phone, member_function, presence_status, is_active)
                 VALUES (?, ?, ?, ?, ?, ?, 1)
             ");
             $ins->execute([
@@ -91,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // ── Actions sur un bénévole existant ────────────────────────────────────
     $volunteerId = (int)($_POST['volunteer_id'] ?? 0);
     if ($volunteerId > 0 && $action !== 'create_volunteer') {
-        $chk = $pdo->prepare("SELECT id, first_name, last_name FROM planning_volunteers WHERE id = ?");
+        $chk = $pdo->prepare("SELECT id, first_name, last_name FROM users WHERE id = ?");
         $chk->execute([$volunteerId]);
         $vol = $chk->fetch(PDO::FETCH_ASSOC);
 
@@ -112,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($firstName === '') {
                     $errors[] = "Le prénom est obligatoire.";
                 } else {
-                    $pdo->prepare("UPDATE planning_volunteers SET first_name = ?, last_name = ?, email = ?, phone = ?, member_function = ?, presence_status = ? WHERE id = ?")
+                    $pdo->prepare("UPDATE users SET first_name = ?, last_name = ?, email = ?, phone = ?, member_function = ?, presence_status = ? WHERE id = ?")
                         ->execute([
                             $firstName,
                             $lastName, // colonne NOT NULL en base : jamais null, une chaîne vide au pire
@@ -131,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($action === 'toggle_active') {
                 $newStatus = (int)($_POST['new_status'] ?? 1);
-                $pdo->prepare("UPDATE planning_volunteers SET is_active = ? WHERE id = ?")->execute([$newStatus, $volunteerId]);
+                $pdo->prepare("UPDATE users SET is_active = ? WHERE id = ?")->execute([$newStatus, $volunteerId]);
                 audit_log('admin', 'update', 'volunteer', $volunteerId, $fullName, ['action' => $newStatus ? 'activate' : 'deactivate']);
                 $success = $newStatus ? "$fullName réactivé." : "$fullName désactivé.";
             }
@@ -144,13 +144,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $newCode = genAccessCode();
                     $tries = 0;
                     while ($tries < 5) {
-                        $dup = $pdo->prepare("SELECT id FROM planning_volunteers WHERE access_code = ?");
+                        $dup = $pdo->prepare("SELECT id FROM users WHERE access_code = ?");
                         $dup->execute([$newCode]);
                         if (!$dup->fetch()) break;
                         $newCode = genAccessCode();
                         $tries++;
                     }
-                    $pdo->prepare("UPDATE planning_volunteers SET access_code = ?, role = ?, code_created_at = NOW() WHERE id = ?")
+                    $pdo->prepare("UPDATE users SET access_code = ?, role = ?, code_created_at = NOW() WHERE id = ?")
                         ->execute([$newCode, $role, $volunteerId]);
                     audit_log('admin', 'update', 'volunteer', $volunteerId, $fullName, ['action' => 'grant_access', 'role' => $role]);
                     $revealedCode = $newCode;
@@ -160,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             if ($action === 'revoke_access') {
-                $pdo->prepare("UPDATE planning_volunteers SET access_code = NULL, role = NULL WHERE id = ?")->execute([$volunteerId]);
+                $pdo->prepare("UPDATE users SET access_code = NULL, role = NULL WHERE id = ?")->execute([$volunteerId]);
                 audit_log('admin', 'update', 'volunteer', $volunteerId, $fullName, ['action' => 'revoke_access']);
                 $success = "Accès révoqué pour $fullName.";
             }
@@ -170,7 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!in_array($role, $allowedRoles, true)) {
                     $errors[] = "Rôle invalide.";
                 } else {
-                    $pdo->prepare("UPDATE planning_volunteers SET role = ? WHERE id = ?")->execute([$role, $volunteerId]);
+                    $pdo->prepare("UPDATE users SET role = ? WHERE id = ?")->execute([$role, $volunteerId]);
                     audit_log('admin', 'update', 'volunteer', $volunteerId, $fullName, ['action' => 'change_role', 'role' => $role]);
                     $success = "Rôle mis à jour pour $fullName.";
                 }
@@ -180,13 +180,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $newCode = genAccessCode();
                 $tries = 0;
                 while ($tries < 5) {
-                    $dup = $pdo->prepare("SELECT id FROM planning_volunteers WHERE access_code = ?");
+                    $dup = $pdo->prepare("SELECT id FROM users WHERE access_code = ?");
                     $dup->execute([$newCode]);
                     if (!$dup->fetch()) break;
                     $newCode = genAccessCode();
                     $tries++;
                 }
-                $pdo->prepare("UPDATE planning_volunteers SET access_code = ?, code_created_at = NOW() WHERE id = ?")
+                $pdo->prepare("UPDATE users SET access_code = ?, code_created_at = NOW() WHERE id = ?")
                     ->execute([$newCode, $volunteerId]);
                 audit_log('admin', 'update', 'volunteer', $volunteerId, $fullName, ['action' => 'regenerate_code']);
                 $revealedCode = $newCode;
@@ -206,7 +206,7 @@ $fActive   = trim($_GET['active'] ?? ''); // '' | '1' | '0'
 
 $sql = "SELECT id, first_name, last_name, email, phone, access_code, role, member_function, presence_status,
                code_created_at, last_login_at, is_active
-        FROM planning_volunteers WHERE 1=1";
+        FROM users WHERE 1=1";
 $params = [];
 if ($search !== '') {
     $sql .= " AND (first_name LIKE ? OR last_name LIKE ? OR email LIKE ?)";
@@ -236,7 +236,7 @@ if ($editTargetId > 0) {
     }
     if ($editTarget === null) {
         // Pas dans la page courante (filtres actifs) : on va le chercher directement.
-        $q = $pdo->prepare("SELECT id, first_name, last_name, email, phone, access_code, role, member_function, presence_status, code_created_at, last_login_at, is_active FROM planning_volunteers WHERE id = ?");
+        $q = $pdo->prepare("SELECT id, first_name, last_name, email, phone, access_code, role, member_function, presence_status, code_created_at, last_login_at, is_active FROM users WHERE id = ?");
         $q->execute([$editTargetId]);
         $editTarget = $q->fetch(PDO::FETCH_ASSOC) ?: null;
     }
