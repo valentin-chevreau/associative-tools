@@ -4,10 +4,6 @@
 
 declare(strict_types=1);
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
 require_once __DIR__ . '/../shared/bootstrap.php';
 
 if (!defined('APP_BASE')) {
@@ -15,9 +11,7 @@ if (!defined('APP_BASE')) {
 }
 
 if (!is_super_admin()) {
-    http_response_code(403);
-    echo "Accès réservé aux super administrateurs.";
-    exit;
+    suite_forbidden("Les migrations SQL sont réservées aux super administrateurs.", "Accès refusé", "users", "Super admin");
 }
 
 $pdo = _bootstrap_get_pdo();

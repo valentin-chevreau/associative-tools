@@ -127,8 +127,34 @@ if (!defined('SUITE_PREPROD_SESSION_NAME')) {
     define('SUITE_PREPROD_SESSION_NAME', 'TU_PREPROD');
 }
 
+/* Beaucoup de pages (admin/*, planning/*, logistique/*…) appelaient session_start()
+ * AVANT de charger ce fichier : la session démarrait alors avec le nom par défaut
+ * (PHPSESSID) et sans les paramètres de cookie ci-dessous — sur /preprod-tools/,
+ * ces pages lisaient donc une AUTRE session que celle du login (ex. un ancien
+ * « super admin » restant dans le cookie PHPSESSID). On referme cette session
+ * prématurée et on repart avec le bon nom. */
+if (!$suiteIsCli && session_status() === PHP_SESSION_ACTIVE) {
+    $suiteExpectedName = (strpos((string)(parse_url((string)($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?: '/'), '/preprod-tools/') === 0)
+        ? SUITE_PREPROD_SESSION_NAME : 'PHPSESSID';
+    if (session_name() !== $suiteExpectedName) {
+        session_write_close();
+        // Ne pas réutiliser l'identifiant de la session prématurée (ce serait
+        // récupérer ses données, ex. un ancien super admin) : on prend le cookie
+        // du bon nom s'il existe, sinon un nouvel identifiant sera généré.
+        $suiteOwnId = (string)($_COOKIE[$suiteExpectedName] ?? '');
+        session_id(preg_match('/^[A-Za-z0-9,-]{22,128}$/', $suiteOwnId) ? $suiteOwnId : '');
+    }
+}
+
 if (!$suiteIsCli && session_status() === PHP_SESSION_NONE) {
-    if (strpos(__FILE__, '/preprod-tools/') !== false) {
+    // Détection préprod basée sur l'URL demandée (comme suite_base() plus bas),
+    // et non sur __FILE__ : si shared/ est partagé entre /tools et /preprod-tools
+    // (lien symbolique, ou tout déploiement où le fichier physique est commun),
+    // __FILE__ peut être résolu vers le chemin réel et ne plus contenir
+    // "/preprod-tools/", ce qui faisait silencieusement échouer cette détection
+    // et faisait retomber la préprod sur le même nom de cookie que la prod.
+    $suiteReqPath = parse_url((string)($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?: '/';
+    if (strpos($suiteReqPath, '/preprod-tools/') === 0) {
         session_name(SUITE_PREPROD_SESSION_NAME);
     }
     $suiteHost = strtolower((string) preg_replace('/:\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? '')));
@@ -406,6 +432,17 @@ if (!function_exists('admin_login_with_code')) {
 
         $role = (string)$volunteer['role'];
         if (!in_array($role, ['admin', 'admin_plus', 'super_admin'], true)) return false;
+
+        // Repart d'une session propre : sans cela, les drapeaux de rôle d'une
+        // connexion précédente (super_admin, admin_plus…) survivaient à un
+        // nouveau login avec le code d'un autre utilisateur.
+        foreach (['is_admin', 'admin_authenticated', 'admin', 'admin_plus', 'is_admin_plus',
+                  'super_admin', 'admin_last_active', 'volunteer_id', 'volunteer_name'] as $k) {
+            unset($_SESSION[$k]);
+        }
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_regenerate_id(true);
+        }
 
         $_SESSION['is_admin'] = true;
         $_SESSION['admin_authenticated'] = true;

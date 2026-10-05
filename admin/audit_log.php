@@ -3,10 +3,6 @@
 
 declare(strict_types=1);
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
 require_once __DIR__ . '/../shared/bootstrap.php';
 
 if (!defined('APP_BASE')) {
@@ -14,9 +10,7 @@ if (!defined('APP_BASE')) {
 }
 
 if (!is_admin_plus()) {
-    http_response_code(403);
-    echo "Accès réservé aux administrateurs principaux.";
-    exit;
+    suite_forbidden("Le journal d'audit est réservé aux administrateurs principaux (Admin+).", "Accès refusé", "users", "Admin+");
 }
 
 $pdo = _bootstrap_get_pdo();
