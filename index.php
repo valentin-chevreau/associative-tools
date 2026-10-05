@@ -138,6 +138,7 @@ function card_icon_emoji(string $name): string {
         'briefcase' => '🗂',
         'gift'      => '🎁',
         'file'      => '📄',
+        'chart'     => '📊',
         default     => '⚙️',
     };
 }

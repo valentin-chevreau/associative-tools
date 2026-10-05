@@ -23,7 +23,7 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
         if (!$isAdmin) return in_array($module, ['planning', 'caisse', 'logistique', 'annuaire'], true);
         return module_access($module);
     };
-    $showGestion = $can('adhesions') || $can('subventions') || $can('donations') || $can('prospection') || $can('documents');
+    $showGestion = $can('adhesions') || $can('subventions') || $can('donations') || $can('prospection') || $can('documents') || $can('reports');
 
     $roleLabel = match($role) {
         'super_admin' => 'Super admin',
@@ -94,10 +94,6 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
       <a href="<?= h2($base . '/planning/admin/event_edit.php') ?>"
          class="tu-sb-item <?= _nav_active('planning-create', $activeItem, $activeModule, 'planning') ?>">
         Créer un événement
-      </a>
-      <a href="<?= h2($base . '/planning/admin/report_activity.php') ?>"
-         class="tu-sb-item <?= _nav_active('planning-cra', $activeItem, $activeModule, 'planning') ?>">
-        Compte-rendu d'activité
       </a>
       <?php endif; ?>
     </div>
@@ -358,6 +354,41 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
         Entête / pied de page
       </a>
       <?php endif; ?>
+    </div>
+    <?php endif; ?>
+    <?php endif; ?>
+
+    <?php if ($can('reports')): ?>
+    <!-- RAPPORTS -->
+    <a href="<?= h2($base . '/reports/index.php') ?>"
+       class="tu-sb-item <?= _mod_active('reports', $activeModule) ?>"
+       id="snav-reports">
+      <svg class="tu-sb-ico" viewBox="0 0 24 24">
+        <path d="M3 3v18h18"/>
+        <rect x="7" y="12" width="3" height="6" rx="0.5"/>
+        <rect x="12" y="8" width="3" height="10" rx="0.5"/>
+        <rect x="17" y="5" width="3" height="13" rx="0.5"/>
+      </svg>
+      Rapports
+    </a>
+    <?php if ($activeModule === 'reports'): ?>
+    <div class="tu-sb-sub-nav">
+      <a href="<?= h2($base . '/reports/index.php') ?>"
+         class="tu-sb-item <?= _nav_active('reports-home', $activeItem, $activeModule, 'reports') ?>">
+        Vue d'ensemble
+      </a>
+      <a href="<?= h2($base . '/reports/activity.php') ?>"
+         class="tu-sb-item <?= _nav_active('reports-cra', $activeItem, $activeModule, 'reports') ?>">
+        Compte-rendu d'activité
+      </a>
+      <a href="<?= h2($base . '/reports/volunteers.php') ?>"
+         class="tu-sb-item <?= _nav_active('reports-vol', $activeItem, $activeModule, 'reports') ?>">
+        Bilan bénévoles
+      </a>
+      <a href="<?= h2($base . '/reports/donations.php') ?>"
+         class="tu-sb-item <?= _nav_active('reports-don', $activeItem, $activeModule, 'reports') ?>">
+        Bilan dons
+      </a>
     </div>
     <?php endif; ?>
     <?php endif; ?>

@@ -320,6 +320,7 @@ if (!function_exists('suite_modules')) {
             'donations'       => 'Dons',
             'prospection'     => 'Prospection',
             'documents'       => 'Documents',
+            'reports'         => 'Rapports (CRA, bilans)',
             'site_backoffice' => 'Backoffice du site internet',
         ];
     }
@@ -396,7 +397,7 @@ if (!function_exists('suite_module_from_path')) {
         $map = [
             'planning' => 'planning', 'caisse' => 'caisse', 'logistique' => 'logistique',
             'adhesions' => 'adhesions', 'subventions' => 'subventions', 'donations' => 'donations',
-            'prospection' => 'prospection', 'documents' => 'documents',
+            'prospection' => 'prospection', 'documents' => 'documents', 'reports' => 'reports',
         ];
         return $map[$first] ?? null;
     }
@@ -404,7 +405,7 @@ if (!function_exists('suite_module_from_path')) {
 
 if (!defined('SITE_BACKOFFICE_URL')) {
     // Adresse du backoffice du site internet grand public (lien de la sidebar).
-    define('SITE_BACKOFFICE_URL', 'https://touraine-ukraine.fr/admin/site');
+    define('SITE_BACKOFFICE_URL', 'https://touraine-ukraine.fr/bureau/');
 }
 
 /**

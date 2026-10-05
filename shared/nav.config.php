@@ -305,6 +305,22 @@ if (!function_exists('nav_items')) {
       ];
     }
 
+    // Rapports (CRA, bilan bénévoles, bilan dons) — droit « reports », Admin+ par défaut
+    $reportsChildren = [];
+    add_if_exists($reportsChildren, "Vue d'ensemble",         $root . '/reports/index.php',      $base . '/reports/index.php');
+    add_if_exists($reportsChildren, "Compte-rendu d'activité", $root . '/reports/activity.php',  $base . '/reports/activity.php');
+    add_if_exists($reportsChildren, 'Bilan bénévoles',        $root . '/reports/volunteers.php', $base . '/reports/volunteers.php');
+    add_if_exists($reportsChildren, 'Bilan dons',             $root . '/reports/donations.php',  $base . '/reports/donations.php');
+    if (!empty($reportsChildren)) {
+      $items[] = [
+        'label' => 'Rapports',
+        'icon'  => 'chart',
+        'module' => 'reports', 'group' => 'gestion',
+        'min_role' => 'admin_plus',
+        'children' => $reportsChildren,
+      ];
+    }
+
     return $items;
   }
 }
