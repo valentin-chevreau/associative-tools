@@ -20,12 +20,7 @@ if ($attempts >= 5 && ($now - $lastAttempt) < 900) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($err)) {
     $code = (string)($_POST['code'] ?? '');
 
-    error_log("=== LOGIN DEBUG ===");
-    error_log("Code POST: '" . $code . "' (longueur: " . strlen($code) . ")");
-    error_log("Code trimé: '" . trim($code) . "'");
-
     if (admin_login_with_code($code)) {
-        error_log("LOGIN OK");
         unset($_SESSION['login_attempts'], $_SESSION['last_login_attempt']);
         $next = (string)($_POST['next'] ?? '');
         if ($next === '') $next = suite_base() . '/index.php';
@@ -33,7 +28,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($err)) {
         exit;
     }
 
-    error_log("LOGIN FAIL - Code rejete par admin_login_with_code()");
     $_SESSION['login_attempts'] = $attempts + 1;
     $_SESSION['last_login_attempt'] = $now;
     $nextUrl = $_SERVER['REQUEST_URI'] ?? 'login.php';
@@ -47,9 +41,6 @@ if (isset($_GET['error']) && $_GET['error'] === '1') {
 
 $next = (string)($_GET['next'] ?? '');
 if ($next === '') $next = suite_base() . '/index.php';
-
-// Lien "retour" -> planning benevoles (page publique)
-$planningUrl = rtrim(suite_base(), '/') . '/planning/index.php';
 
 $attemptsLeft = max(0, 5 - $attempts);
 ?>
@@ -106,6 +97,17 @@ $attemptsLeft = max(0, 5 - $attempts);
       font-size: 28px;
       font-weight: 900;
       letter-spacing: 1px;
+    }
+
+    .logo { position: relative; }
+    .logo.has-img { background: #fff; padding: 8px; box-shadow: 0 0 0 1px #e8dfd4; }
+    .logo.has-img img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .logo .lock {
+      position: absolute; right: -8px; bottom: -8px;
+      width: 28px; height: 28px; border-radius: 50%;
+      background: #c47328; color: #fff;
+      border: 3px solid #faf7f2;
+      display: flex; align-items: center; justify-content: center;
     }
 
     .header {
@@ -207,7 +209,13 @@ $attemptsLeft = max(0, 5 - $attempts);
 <body>
   <div class="wrap">
     <div class="card">
-      <div class="logo">TU</div>
+      <?php $suiteLogo = suite_logo_data_uri(); ?>
+      <div class="logo<?= $suiteLogo ? ' has-img' : '' ?>">
+        <?php if ($suiteLogo): ?><img src="<?= $suiteLogo ?>" alt="Touraine-Ukraine"><?php else: ?>TU<?php endif; ?>
+        <span class="lock" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        </span>
+      </div>
 
       <div class="header">
         <h1 class="title">Espace Administrateur</h1>
@@ -247,8 +255,6 @@ $attemptsLeft = max(0, 5 - $attempts);
           <?= $attemptsLeft ?> tentative<?= $attemptsLeft > 1 ? 's' : '' ?> restante<?= $attemptsLeft > 1 ? 's' : '' ?>
         </div>
       <?php endif; ?>
-
-      <a class="link" href="<?= h($planningUrl) ?>">← Retour au planning</a>
 
       <div class="footer">
         Touraine-Ukraine &copy; <?= date('Y') ?>
