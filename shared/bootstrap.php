@@ -56,7 +56,7 @@ if (!function_exists('suite_render_error_page')) {
             || (function_exists('is_super_admin') && is_super_admin());
         echo '<!doctype html><html lang="fr"><head><meta charset="utf-8">'
            . '<title>Erreur — Suite Touraine-Ukraine</title>'
-           . '<meta name="viewport" content="width=device-width, initial-scale=1">'
+           . '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'
            . '<style>'
            . 'body{font-family:system-ui,-apple-system,sans-serif;background:#fdf8f0;color:#3a2e22;'
            . 'display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px;}'
@@ -229,6 +229,25 @@ if (!function_exists('suite_base')) {
         // Seuls /tools/ (prod) et /preprod-tools/ (préprod) existent désormais —
         // les anciens dossiers autonomes ont été supprimés du serveur.
         return (strpos($path, '/preprod-tools/') === 0) ? '/preprod-tools' : '/tools';
+    }
+}
+
+if (!function_exists('suite_css_v')) {
+    /** Suffixe de cache-busting (?v=mtime) pour suite_nav.css : force le rechargement après déploiement (web-app iPhone incluse). */
+    function suite_css_v(): string {
+        $f = __DIR__ . '/../assets/css/suite_nav.css';
+        return '?v=' . (is_file($f) ? (string)filemtime($f) : '1');
+    }
+}
+
+if (!function_exists('suite_pwa_head')) {
+    /** Balises pour l'installation sur l'écran d'accueil (iOS/Android). */
+    function suite_pwa_head(): string {
+        return '<meta name="apple-mobile-web-app-capable" content="yes">'
+             . '<meta name="mobile-web-app-capable" content="yes">'
+             . '<meta name="apple-mobile-web-app-title" content="Touraine-Ukraine">'
+             . '<meta name="apple-mobile-web-app-status-bar-style" content="default">'
+             . '<meta name="theme-color" content="#0f172a">';
     }
 }
 
@@ -653,9 +672,9 @@ if (!function_exists('suite_forbidden')) {
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title><?= $e($title) ?> — Touraine-Ukraine</title>
-  <link rel="stylesheet" href="<?= $e($base) ?>/assets/css/suite_nav.css">
+  <link rel="stylesheet" href="<?= $e($base) ?>/assets/css/suite_nav.css<?= function_exists('suite_css_v') ? suite_css_v() : '' ?>"><?= function_exists('suite_pwa_head') ? suite_pwa_head() : '' ?>
 </head>
 <body class="tu-v2">
 <?php

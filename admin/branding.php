@@ -131,8 +131,8 @@ $logo = (is_file($logoPath) && filesize($logoPath) > 0)
 <head>
     <meta charset="utf-8">
     <title>Logo — Touraine-Ukraine</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="<?= h(suite_base()) ?>/assets/css/suite_nav.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <link rel="stylesheet" href="<?= h(suite_base()) ?>/assets/css/suite_nav.css<?= function_exists('suite_css_v') ? suite_css_v() : '' ?>"><?= function_exists('suite_pwa_head') ? suite_pwa_head() : '' ?>
     <style>
       body.tu-v2 { display: block; }
       body.tu-v2 .tu-main { margin-left: var(--tu-sw); padding: 24px; }

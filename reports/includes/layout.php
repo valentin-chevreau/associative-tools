@@ -25,8 +25,8 @@ $suiteBase = suite_base();
 <head>
   <meta charset="UTF-8">
   <title><?= rep_h($title) ?></title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="<?= rep_h($suiteBase) ?>/assets/css/suite_nav.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="stylesheet" href="<?= rep_h($suiteBase) ?>/assets/css/suite_nav.css<?= function_exists('suite_css_v') ? suite_css_v() : '' ?>"><?= function_exists('suite_pwa_head') ? suite_pwa_head() : '' ?>
   <?= rep_common_css() ?>
 </head>
 <body class="tu-v2">

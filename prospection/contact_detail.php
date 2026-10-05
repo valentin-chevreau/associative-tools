@@ -81,9 +81,9 @@ $base = suite_base();
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title><?= h($contact['nom']) ?> — Prospection</title>
-  <link rel="stylesheet" href="<?= h($base) ?>/assets/css/suite_nav.css">
+  <link rel="stylesheet" href="<?= h($base) ?>/assets/css/suite_nav.css<?= function_exists('suite_css_v') ? suite_css_v() : '' ?>"><?= function_exists('suite_pwa_head') ? suite_pwa_head() : '' ?>
 </head>
 <body class="tu-v2">
 <?php require_once __DIR__ . '/../shared/suite_nav.php'; suite_nav_render('prospection', 'prospection-toutes'); ?>

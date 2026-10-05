@@ -57,9 +57,9 @@ $showBackoffice = module_access('site_backoffice');
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Suite Touraine-Ukraine</title>
-  <link rel="stylesheet" href="<?= h($base) ?>/assets/css/suite_nav.css">
+  <link rel="stylesheet" href="<?= h($base) ?>/assets/css/suite_nav.css<?= function_exists('suite_css_v') ? suite_css_v() : '' ?>"><?= function_exists('suite_pwa_head') ? suite_pwa_head() : '' ?>
 </head>
 <body class="tu-v2">
 
