@@ -7,9 +7,15 @@ declare(strict_types=1);
  * shared/bootstrap.php
  * Point central d'authentification pour la suite tools
  * - Codes d'accès gérés en base (users.access_code), plus de codes en dur
- * - Détecte automatiquement si on est en mode "suite" ou "standalone"
- * - Unifie l'authentification pour tous les modules
+ * - Unifie l'authentification pour tous les modules (mode suite uniquement —
+ *   le mode "standalone" historique n'existe plus : les anciens dossiers
+ *   autonomes caisse/, logistique/, planning/, etc. ont été retirés du
+ *   serveur, seuls /tools/ et /preprod-tools/ subsistent)
  * - Protège l'accès à /tools/ avec exceptions intelligentes
+ * - Cookie de session partagé avec les sous-domaines (*.touraine-ukraine.fr) pour
+ *   que l'espace bureau du site public reconnaisse la connexion à la suite
+ * - Session distincte pour la préprod (/preprod-tools/) : se connecter en préprod
+ *   ne connecte plus à la prod, et inversement
  */
 
 /* --------------------------------------------------------------------------
@@ -101,20 +107,42 @@ if (!defined('SUITE_ERROR_HANDLERS_INSTALLED')) {
 // identifiants de connexion ailleurs.
 $suiteIsCli = (PHP_SAPI === 'cli');
 
-if (!$suiteIsCli && session_status() === PHP_SESSION_NONE) {
-    session_start();
+/* --------------------------------------------------------------------------
+ * Cookie de session partagé avec les sous-domaines.
+ * Sur touraine-ukraine.fr (et ses sous-domaines), le cookie est posé pour
+ * « .touraine-ukraine.fr » : une connexion faite dans /tools/ est reconnue par
+ * l'espace bureau du site (new.touraine-ukraine.fr, puis touraine-ukraine.fr).
+ * Ailleurs (local, autre domaine), comportement PHP par défaut.
+ * Doit rester identique à auth.suite.cookie_domain dans site/config.php.
+ *
+ * La préprod (/preprod-tools/) utilise son propre nom de session : prod et
+ * préprod sont sur le même domaine et partageaient jusqu'ici la même session
+ * (un login en préprod ouvrait la prod avec un id de la base de préprod).
+ * Doit rester identique à auth.suite.session_name dans site/config.php.
+ * -------------------------------------------------------------------------- */
+if (!defined('SUITE_COOKIE_DOMAIN')) {
+    define('SUITE_COOKIE_DOMAIN', '.touraine-ukraine.fr');
+}
+if (!defined('SUITE_PREPROD_SESSION_NAME')) {
+    define('SUITE_PREPROD_SESSION_NAME', 'TU_PREPROD');
 }
 
-/* ====================================================================
-   DÉTECTION DU MODE : SUITE vs STANDALONE
-   ==================================================================== */
-
-if (!defined('SUITE_MODE')) {
-    $currentFile = __FILE__;
-    $isSuiteMode = (strpos($currentFile, '/tools/shared/') !== false ||
-                    strpos($currentFile, '/preprod-tools/shared/') !== false);
-
-    define('SUITE_MODE', $isSuiteMode);
+if (!$suiteIsCli && session_status() === PHP_SESSION_NONE) {
+    if (strpos(__FILE__, '/preprod-tools/') !== false) {
+        session_name(SUITE_PREPROD_SESSION_NAME);
+    }
+    $suiteHost = strtolower((string) preg_replace('/:\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? '')));
+    $suiteHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path'     => '/',
+        'domain'   => str_ends_with('.' . $suiteHost, SUITE_COOKIE_DOMAIN) ? SUITE_COOKIE_DOMAIN : '',
+        'secure'   => $suiteHttps,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    session_start();
 }
 
 /* ====================================================================
@@ -172,17 +200,9 @@ if (!function_exists('suite_base')) {
         $uri = $_SERVER['REQUEST_URI'] ?? '/';
         $path = parse_url($uri, PHP_URL_PATH) ?: '/';
 
-        if (strpos($path, '/tools/') === 0) return '/tools';
-        if (strpos($path, '/preprod-tools/') === 0) return '/preprod-tools';
-
-        if (strpos($path, '/preprod-planning') === 0) return '/preprod-planning';
-        if (strpos($path, '/planning') === 0) return '/planning';
-        if (strpos($path, '/preprod-logistique') === 0) return '/preprod-logistique';
-        if (strpos($path, '/logistique') === 0) return '/logistique';
-        if (strpos($path, '/preprod-caisse') === 0) return '/preprod-caisse';
-        if (strpos($path, '/caisse') === 0) return '/caisse';
-
-        return '';
+        // Seuls /tools/ (prod) et /preprod-tools/ (préprod) existent désormais —
+        // les anciens dossiers autonomes ont été supprimés du serveur.
+        return (strpos($path, '/preprod-tools/') === 0) ? '/preprod-tools' : '/tools';
     }
 }
 
@@ -196,19 +216,13 @@ if (!function_exists('suite_login_url')) {
     function suite_login_url(): string {
         $base = suite_base();
         $current = $_SERVER['REQUEST_URI'] ?? '';
-
-        if (SUITE_MODE) {
-            return $base . '/admin/login.php?next=' . urlencode($current);
-        } else {
-            return 'login_admin.php?redirect=' . urlencode($current);
-        }
+        return $base . '/admin/login.php?next=' . urlencode($current);
     }
 }
 
 if (!function_exists('suite_logout_url')) {
     function suite_logout_url(): string {
-        $base = suite_base();
-        return SUITE_MODE ? ($base . '/admin/logout.php') : 'logout_admin.php';
+        return suite_base() . '/admin/logout.php';
     }
 }
 
@@ -257,13 +271,11 @@ if (!function_exists('current_volunteer_name')) {
 }
 
 /**
- * Login avec code (mode suite uniquement) — recherche en base sur users.
+ * Login avec code — recherche en base sur users.
  * Récupère $pdo s'il existe déjà, sinon se connecte lui-même (voir _bootstrap_get_pdo).
  */
 if (!function_exists('admin_login_with_code')) {
     function admin_login_with_code(string $code): bool {
-        if (!SUITE_MODE) return false;
-
         $pdo = _bootstrap_get_pdo();
         if (!($pdo instanceof PDO)) return false;
 
@@ -447,7 +459,7 @@ if (!function_exists('log_action')) {
    PROTECTION GLOBALE DE /TOOLS/ (AVEC EXCEPTIONS INTELLIGENTES)
    ==================================================================== */
 
-if (!$suiteIsCli && defined('SUITE_MODE') && SUITE_MODE) {
+if (!$suiteIsCli) {
 
     $current_page = $_SERVER['PHP_SELF'] ?? '';
 

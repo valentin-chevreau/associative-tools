@@ -23,7 +23,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($err)) {
     error_log("=== LOGIN DEBUG ===");
     error_log("Code POST: '" . $code . "' (longueur: " . strlen($code) . ")");
     error_log("Code trimé: '" . trim($code) . "'");
-    error_log("SUITE_MODE: " . (defined('SUITE_MODE') && SUITE_MODE ? 'OUI' : 'NON'));
 
     if (admin_login_with_code($code)) {
         error_log("LOGIN OK");
