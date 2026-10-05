@@ -1104,3 +1104,11 @@ body.tu-sb-open .tu-hamburger {
 /* Topbar imbriquée dans .tu-pg (pages planning) : pleine largeur, comme les autres modules */
 .tu-pg:has(> .tu-topbar) { padding: 0; }
 @media (max-width: 900px) { .tu-pg:has(> .tu-topbar) > .tu-pg { padding: 16px 12px; } }
+
+/* Mises en page "contenu + colonne latérale" en style inline (ex. 1fr 280px) : empilées sur mobile */
+@media (max-width: 900px) {
+  [style*="grid-template-columns:1fr 2"], [style*="grid-template-columns:1fr 3"],
+  [style*="grid-template-columns: 1fr 2"], [style*="grid-template-columns: 1fr 3"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
