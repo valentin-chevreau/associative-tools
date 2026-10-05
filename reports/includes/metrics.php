@@ -571,8 +571,8 @@ function rep_common_css(): string {
 .rep-bar.green { background:var(--tu-green-main, #2a7d4a); }
 .rep-bar-val { font-size:10.5px; color:var(--tu-ink-500, #6b5d4d); height:13px; line-height:13px; }
 .rep-bar-lab { font-size:10.5px; color:var(--tu-ink-400, #8a7a68); text-transform:uppercase; letter-spacing:.04em; }
-.rep-grid2 { display:grid; grid-template-columns:repeat(auto-fit, minmax(340px, 1fr)); gap:14px; margin-bottom:14px; }
-.rep-hub { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px; }
+.rep-grid2 { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap:14px; margin-bottom:14px; }
+.rep-hub { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap:14px; }
 .rep-hub a { text-decoration:none; color:inherit; }
 .rep-hub .tu-card { padding:18px 20px; height:100%; box-sizing:border-box; }
 .rep-hub .tu-card:hover { box-shadow:0 6px 22px rgba(60,40,10,.10); }

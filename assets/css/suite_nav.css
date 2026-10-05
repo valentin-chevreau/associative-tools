@@ -1037,3 +1037,70 @@ body.tu-sb-open .tu-hamburger {
   color: var(--tu-red-main, #c0432a);
   font-weight: 700;
 }
+
+/* ═══════════════════════════════════════
+   CORRECTIFS MOBILE (≤ 900px)
+   - le contenu ne doit jamais élargir la page (flex min-width)
+   - plus de bande vide au-dessus de la barre du haut
+   - ombre de la sidebar masquée tant qu'elle est fermée
+   - barre du haut sur deux lignes : fil d'Ariane, puis actions défilantes
+═══════════════════════════════════════ */
+.tu-main { min-width: 0; }
+
+@media (max-width: 900px) {
+  html, body.tu-v2 { max-width: 100%; overflow-x: hidden; }
+  body.tu-v2 { display: block; }
+  .tu-main { max-width: 100vw; width: 100%; }
+
+  /* Sidebar fermée : pas d'ombre qui dépasse sur le bord gauche */
+  .tu-sb:not(.tu-open) { box-shadow: none !important; visibility: hidden; transition: transform .25s cubic-bezier(.4,0,.2,1), visibility 0s linear .25s; }
+  .tu-sb.tu-open { visibility: visible; transition: transform .25s cubic-bezier(.4,0,.2,1); }
+
+  /* La barre du haut porte déjà la place du bouton menu : pas de bande vide au-dessus */
+  .tu-main { padding-top: 0 !important; }
+  .tu-main:not(:has(> .tu-topbar)):not(:has(> .tu-pg > .tu-topbar)) { padding-top: 60px !important; }
+
+  /* Pages avec barre du haut : la barre et le contenu vont jusqu'aux bords (les marges
+     latérales viennent de .tu-pg), même si la page ajoute son propre padding à .tu-main */
+  .tu-main:has(> .tu-topbar), .tu-main:has(> .tu-pg > .tu-topbar) { padding-left: 0 !important; padding-right: 0 !important; padding-top: 0 !important; }
+
+  .tu-topbar {
+    height: auto !important;
+    min-height: 56px;
+    padding: 8px 12px 10px 60px !important;
+    flex-wrap: wrap;
+    row-gap: 8px;
+    align-items: center;
+  }
+  /* Fil d'Ariane : une seule ligne, au plus « parent › page » */
+  .tu-bc { flex: 1 1 100%; min-width: 0; min-height: 40px; flex-wrap: nowrap; overflow: hidden; font-size: 13px; }
+  .tu-bc > :nth-last-child(n+4) { display: none; }
+  .tu-bc > a, .tu-bc-sep { white-space: nowrap; }
+  .tu-bc-cur { min-width: 0; }
+
+  /* Actions : une rangée de boutons défilante, alignée sur les marges de la page */
+  .tu-topbar-acts {
+    flex: 1 1 100%;
+    flex-wrap: nowrap !important;
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -12px 0 -48px;
+    padding: 0 12px 2px 0;
+    scrollbar-width: none;
+  }
+  .tu-topbar-acts::-webkit-scrollbar { display: none; }
+  .tu-topbar-acts > * { flex-shrink: 0; }
+  .tu-topbar-acts .tu-btn { padding: 8px 14px !important; font-size: 12.5px !important; min-height: 36px; }
+  .tu-topbar-acts .tu-tabs { flex-shrink: 0; }
+  .tu-topbar-acts:empty { display: none; }
+
+  /* Tableaux et cartes larges : défilement horizontal interne, pas de débordement de page */
+  .tu-card { max-width: 100%; overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  .tu-card > table, .tu-card > div > table, .tu-card > form > table { min-width: 620px; }
+  .tu-ph-title { overflow-wrap: anywhere; }
+}
+
+/* Topbar imbriquée dans .tu-pg (pages planning) : pleine largeur, comme les autres modules */
+.tu-pg:has(> .tu-topbar) { padding: 0; }
+@media (max-width: 900px) { .tu-pg:has(> .tu-topbar) > .tu-pg { padding: 16px 12px; } }

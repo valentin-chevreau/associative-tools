@@ -191,6 +191,21 @@ function card_icon_emoji(string $name): string {
   display: flex; align-items: center; justify-content: space-between;
 }
 .tu-pc-link { font-size: 12px; font-weight: 700; color: var(--tu-amber-500); }
+
+/* Mobile : accueil compacte — tuiles 2 par ligne, sans description, pour limiter le défilement */
+@media (max-width: 700px) {
+  .tu-ph { margin-bottom: 10px; }
+  .tu-ph-title { font-size: 22px; }
+  .tu-ph-sub { display: none; }
+  .tu-portal-sec { margin-bottom: 8px; }
+  .tu-portal-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tu-mb4 { margin-bottom: 14px !important; }
+  .tu-portal-card { padding: 12px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; min-height: 92px; }
+  .tu-portal-card:hover { transform: none; }
+  .tu-pc-ico { width: 34px; height: 34px; border-radius: 10px; font-size: 17px; margin-bottom: 8px; }
+  .tu-pc-name { font-size: 13.5px; line-height: 1.25; margin-bottom: 0; }
+  .tu-pc-desc, .tu-pc-foot { display: none; }
+}
 </style>
 
 </body>
