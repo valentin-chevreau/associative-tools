@@ -4,7 +4,7 @@
  * Liste harmonisée des 9 anciens onglets Excel, avec filtres.
  */
 require_once __DIR__ . '/../shared/bootstrap.php';
-require_admin_plus(); // module réservé admin+
+require_admin(); // accès au module contrôlé par shared/bootstrap.php (droits par module)
 
 require_once __DIR__ . '/../config_db.php';
 require_once 'functions_prospection.php';
@@ -81,8 +81,7 @@ foreach ($categories as $c) {
     if (!in_array($c['famille_label'], $familles, true)) $familles[] = $c['famille_label'];
 }
 
-$base = function_exists('suite_base') ? suite_base() : '';
-$suiteNavV2 = __DIR__ . '/../shared/suite_nav.php';
+$base = suite_base();
 
 $pageTitle = $categorieActuelle ? prospection_libelle_categorie($categorieActuelle['label']) : ($familleFiltre !== '' ? $familleFiltre : 'Toutes les fiches');
 
@@ -125,7 +124,7 @@ $qsBaseTri = ['categorie' => $categorieCode, 'famille' => $familleFiltre, 'statu
   <link rel="stylesheet" href="<?= h($base) ?>/assets/css/suite_nav.css">
 </head>
 <body class="tu-v2">
-<?php if (is_file($suiteNavV2)): require_once $suiteNavV2; suite_nav_render('prospection', 'prospection-' . ($categorieCode ?: 'toutes')); endif; ?>
+<?php require_once __DIR__ . '/../shared/suite_nav.php'; suite_nav_render('prospection', 'prospection-' . ($categorieCode ?: 'toutes')); ?>
 
 <div class="tu-main">
   <div class="tu-topbar">

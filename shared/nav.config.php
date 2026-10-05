@@ -165,7 +165,7 @@ if (!function_exists('nav_items')) {
     // Dons (HelloAsso + manuel — module autonome, ADMIN+ uniquement)
     // ======================
     $donationsChildren = [];
-    add_if_exists($donationsChildren, 'Gestion des dons', $root . '/donations/index.php', $base . '/donations/index.php', 'admin_plus');
+    add_if_exists($donationsChildren, 'Gestion des dons', $root . '/donations/index.php', $base . '/donations/index.php');
 
     // ======================
     // Prospection (démarchage matériel/dons — ADMIN+ uniquement)
@@ -189,8 +189,8 @@ if (!function_exists('nav_items')) {
     foreach ($prospectionCategoriesNav as $pCode => $pLabel) {
         add_if_exists($prospectionChildren, $pLabel, $root . '/prospection/index.php', $base . '/prospection/index.php?categorie=' . urlencode($pCode));
     }
-    add_if_exists($prospectionChildren, 'Importer un CSV', $root . '/prospection/import.php', $base . '/prospection/import.php', 'admin_plus', 'Admin');
-    add_if_exists($prospectionChildren, 'Nouvelle fiche',  $root . '/prospection/contact_form.php', $base . '/prospection/contact_form.php', 'admin_plus', 'Admin');
+    add_if_exists($prospectionChildren, 'Importer un CSV', $root . '/prospection/import.php', $base . '/prospection/import.php', 'admin', 'Admin');
+    add_if_exists($prospectionChildren, 'Nouvelle fiche',  $root . '/prospection/contact_form.php', $base . '/prospection/contact_form.php', 'admin', 'Admin');
 
     // ======================
     // Items top-level
@@ -200,6 +200,7 @@ if (!function_exists('nav_items')) {
     $items[] = [
       'label' => 'Planning',
       'icon'  => 'calendar',
+      'module' => 'planning', 'group' => 'terrain',
       'min_role' => 'public',
       'children' => $planningChildren,
     ];
@@ -207,6 +208,7 @@ if (!function_exists('nav_items')) {
     $items[] = [
       'label' => 'Convois',
       'icon'  => 'truck',
+      'module' => 'logistique', 'group' => 'terrain',
       'min_role' => 'public',
       'children' => $convoisChildren,
     ];
@@ -214,6 +216,7 @@ if (!function_exists('nav_items')) {
     $items[] = [
       'label' => 'Stock local',
       'icon'  => 'box',
+      'module' => 'logistique', 'group' => 'terrain',
       'min_role' => 'public',
       'children' => $stockChildren,
     ];
@@ -222,6 +225,7 @@ if (!function_exists('nav_items')) {
       $items[] = [
         'label' => 'Étiquettes',
         'icon'  => 'tag',
+        'module' => 'logistique', 'group' => 'terrain',
         'min_role' => 'public',
         'href' => $etiquettesHref,
       ];
@@ -230,6 +234,7 @@ if (!function_exists('nav_items')) {
     $items[] = [
       'label' => 'Caisse',
       'icon'  => 'cash',
+      'module' => 'caisse', 'group' => 'terrain',
       'min_role' => 'public',
       'children' => $caisseChildren,
     ];
@@ -237,6 +242,7 @@ if (!function_exists('nav_items')) {
     $items[] = [
       'label' => 'Annuaire',
       'icon'  => 'users',
+      'module' => 'annuaire', 'group' => 'terrain',
       'min_role' => 'public',
       'children' => $annuaireChildren,
     ];
@@ -246,6 +252,7 @@ if (!function_exists('nav_items')) {
       $items[] = [
         'label' => 'Adhésions',
         'icon'  => 'id-card',
+        'module' => 'adhesions', 'group' => 'gestion',
         'min_role' => 'admin_plus',
         'children' => $adhesionsChildren,
       ];
@@ -256,6 +263,7 @@ if (!function_exists('nav_items')) {
       $items[] = [
         'label' => 'Subventions',
         'icon'  => 'briefcase',
+        'module' => 'subventions', 'group' => 'gestion',
         'min_role' => 'admin_plus',
         'children' => $subventionsChildren,
       ];
@@ -267,6 +275,7 @@ if (!function_exists('nav_items')) {
       $items[] = [
         'label' => 'Dons',
         'icon'  => 'gift',
+        'module' => 'donations', 'group' => 'gestion',
         'min_role' => 'admin_plus',
         'children' => $donationsChildren,
       ];
@@ -277,8 +286,22 @@ if (!function_exists('nav_items')) {
       $items[] = [
         'label' => 'Prospection',
         'icon'  => 'briefcase',
+        'module' => 'prospection', 'group' => 'gestion',
         'min_role' => 'admin_plus',
         'children' => $prospectionChildren,
+      ];
+    }
+
+    // Documents (attestations, PV, listes de présence…)
+    $documentsChildren = [];
+    add_if_exists($documentsChildren, 'Tous les documents', $root . '/documents/index.php', $base . '/documents/index.php');
+    if (!empty($documentsChildren)) {
+      $items[] = [
+        'label' => 'Documents',
+        'icon'  => 'file',
+        'module' => 'documents', 'group' => 'gestion',
+        'min_role' => 'admin',
+        'children' => $documentsChildren,
       ];
     }
 
@@ -298,7 +321,14 @@ if (!function_exists('nav_visible_items')) {
       if (!is_array($it)) continue;
 
       $minRole = (string)($it['min_role'] ?? 'public');
-      if (!can_see_min_role($minRole)) continue;
+      $module  = (string)($it['module'] ?? '');
+      if ($module !== '' && is_admin()) {
+        // Droits par module (gérés par le super admin) : remplacent le rôle minimum.
+        if (!module_access($module)) continue;
+        $minRole = 'public'; // les sous-liens sans rôle propre héritent de l'accès au module
+      } elseif (!can_see_min_role($minRole)) {
+        continue;
+      }
 
       // Filtre children
       if (!empty($it['children']) && is_array($it['children'])) {

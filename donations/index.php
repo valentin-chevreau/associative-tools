@@ -10,7 +10,7 @@ declare(strict_types=1);
 // — voir migrations/001_rename_from_planning.sql pour la bascule).
 
 require_once dirname(__DIR__) . '/shared/bootstrap.php';
-require_admin_plus();
+require_admin(); // l'accès au module est contrôlé par shared/bootstrap.php (droits par module)
 
 require_once __DIR__ . '/includes/env.php';
 require_once __DIR__ . '/includes/helloasso_client.php';

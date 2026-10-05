@@ -5,7 +5,7 @@ declare(strict_types=1);
 // Reçu fiscal (HTML imprimable) — sans génération PDF pour l'instant.
 
 require_once dirname(__DIR__) . '/shared/bootstrap.php';
-require_admin_plus();
+require_admin(); // l'accès au module est contrôlé par shared/bootstrap.php (droits par module)
 
 $config = require __DIR__ . '/config.php';
 

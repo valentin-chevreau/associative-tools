@@ -270,6 +270,117 @@ if (!function_exists('current_volunteer_name')) {
     }
 }
 
+/* ====================================================================
+   DROITS PAR MODULE
+   --------------------------------------------------------------------
+   Résolution de l'accès d'un utilisateur à un module :
+     super_admin                     -> toujours autorisé
+     surcharge utilisateur (table)   -> prioritaire
+     défaut du rôle (table)          -> sinon
+     défaut intégré (ci-dessous)     -> si les tables n'existent pas encore
+   Gérés dans admin/permissions.php (super admin).
+   ==================================================================== */
+
+if (!function_exists('suite_modules')) {
+    /** @return array<string,string> clé => libellé */
+    function suite_modules(): array {
+        return [
+            'planning'        => 'Planning',
+            'caisse'          => 'Caisse',
+            'logistique'      => 'Convois & stock local',
+            'annuaire'        => 'Annuaire (familles)',
+            'adhesions'       => 'Adhésions',
+            'subventions'     => 'Subventions',
+            'donations'       => 'Dons',
+            'prospection'     => 'Prospection',
+            'documents'       => 'Documents',
+            'site_backoffice' => 'Backoffice du site internet',
+        ];
+    }
+}
+
+if (!function_exists('suite_module_default_access')) {
+    /** Accès par défaut d'un rôle (reproduit la sidebar historique). */
+    function suite_module_default_access(string $role, string $module): bool {
+        if ($role === 'super_admin') return true;
+        if ($role === 'admin_plus') return $module !== 'site_backoffice';
+        if ($role === 'admin') {
+            return in_array($module, ['planning', 'caisse', 'logistique', 'annuaire', 'adhesions', 'subventions', 'documents'], true);
+        }
+        return false;
+    }
+}
+
+if (!function_exists('suite_permissions_load')) {
+    /** @return array{roles:array<string,array<string,bool>>, users:array<int,array<string,bool>>} */
+    function suite_permissions_load(bool $reset = false): array {
+        static $cache = null;
+        if ($reset) $cache = null;
+        if ($cache !== null) return $cache;
+
+        $cache = ['roles' => [], 'users' => []];
+        $pdo = _bootstrap_get_pdo();
+        if (!($pdo instanceof PDO)) return $cache;
+
+        try {
+            foreach ($pdo->query("SELECT role, module, allowed FROM suite_role_permissions") as $r) {
+                $cache['roles'][(string)$r['role']][(string)$r['module']] = ((int)$r['allowed'] === 1);
+            }
+            foreach ($pdo->query("SELECT user_id, module, allowed FROM suite_user_permissions") as $r) {
+                $cache['users'][(int)$r['user_id']][(string)$r['module']] = ((int)$r['allowed'] === 1);
+            }
+        } catch (Throwable $e) {
+            // Tables absentes (migration pas encore exécutée) : défauts intégrés.
+            $cache = ['roles' => [], 'users' => []];
+        }
+        return $cache;
+    }
+}
+
+if (!function_exists('module_access_for')) {
+    function module_access_for(string $role, ?int $userId, string $module): bool {
+        if ($role === 'super_admin') return true;
+        if (!in_array($role, ['admin', 'admin_plus'], true)) return false;
+
+        $perm = suite_permissions_load();
+        if ($userId !== null && isset($perm['users'][$userId][$module])) {
+            return $perm['users'][$userId][$module];
+        }
+        if (isset($perm['roles'][$role][$module])) {
+            return $perm['roles'][$role][$module];
+        }
+        return suite_module_default_access($role, $module);
+    }
+}
+
+if (!function_exists('module_access')) {
+    /** L'utilisateur connecté peut-il accéder à ce module ? */
+    function module_access(string $module): bool {
+        return module_access_for(current_role(), current_volunteer_id(), $module);
+    }
+}
+
+if (!function_exists('suite_module_from_path')) {
+    /** Module concerné par un chemin de requête (null = hors modules : admin, accueil…). */
+    function suite_module_from_path(string $path): ?string {
+        $path = preg_replace('#^/(preprod-tools|tools)#', '', $path) ?? $path;
+        $segs = explode('/', ltrim($path, '/'));
+        $first = $segs[0] ?? '';
+        if ($first === 'logistique' && ($segs[1] ?? '') === 'families') return 'annuaire';
+        $map = [
+            'planning' => 'planning', 'caisse' => 'caisse', 'logistique' => 'logistique',
+            'adhesions' => 'adhesions', 'subventions' => 'subventions', 'donations' => 'donations',
+            'prospection' => 'prospection', 'documents' => 'documents',
+        ];
+        return $map[$first] ?? null;
+    }
+}
+
+if (!defined('SITE_BACKOFFICE_URL')) {
+    // Adresse du backoffice du site internet grand public (lien de la sidebar).
+    define('SITE_BACKOFFICE_URL', 'https://touraine-ukraine.fr/admin/site');
+}
+
 /**
  * Login avec code — recherche en base sur users.
  * Récupère $pdo s'il existe déjà, sinon se connecte lui-même (voir _bootstrap_get_pdo).
@@ -456,6 +567,99 @@ if (!function_exists('log_action')) {
 }
 
 /* ====================================================================
+   LOGO DE LA SUITE (téléversé par le super admin, admin/branding.php)
+   Stocké en PNG dans uploads/branding/logo.png (dossier hors dépôt) et
+   inséré en data: URI : aucune URL publique à exposer, donc utilisable
+   sur la page de connexion sans ouvrir l'accès au dossier uploads/.
+   ==================================================================== */
+if (!function_exists('suite_logo_path')) {
+    function suite_logo_path(): string {
+        return dirname(__DIR__) . '/uploads/branding/logo.png';
+    }
+}
+if (!function_exists('suite_logo_data_uri')) {
+    function suite_logo_data_uri(): ?string {
+        static $cache = false;
+        if ($cache !== false) return $cache;
+        $path = suite_logo_path();
+        $cache = null;
+        if (is_file($path) && filesize($path) > 0 && filesize($path) <= 400 * 1024) {
+            $raw = @file_get_contents($path);
+            if ($raw !== false) $cache = 'data:image/png;base64,' . base64_encode($raw);
+        }
+        return $cache;
+    }
+}
+
+/* ====================================================================
+   PAGE « ACCÈS REFUSÉ » (stylée, avec le menu de la suite)
+   ==================================================================== */
+if (!function_exists('suite_forbidden')) {
+    /**
+     * Affiche une page « Accès refusé » (403) dans l'habillage de la suite.
+     * $requiredLabel : rôle nécessaire (ex. « Super admin »), affiché à côté du rôle actuel.
+     */
+    function suite_forbidden(string $message = "Vous n'avez pas accès à cette page.", string $title = 'Accès refusé', string $activeModule = '', string $requiredLabel = ''): void {
+        http_response_code(403);
+        $base = suite_base();
+        $e = static fn(string $v): string => htmlspecialchars($v, ENT_QUOTES, 'UTF-8');
+        $isAdm = is_admin();
+        $roleLabel = match (current_role()) {
+            'super_admin' => 'Super admin',
+            'admin_plus'  => 'Admin+',
+            'admin'       => 'Admin',
+            default       => 'Non connecté',
+        };
+        $who = $isAdm ? current_volunteer_name() : '';
+        ?><!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><?= $e($title) ?> — Touraine-Ukraine</title>
+  <link rel="stylesheet" href="<?= $e($base) ?>/assets/css/suite_nav.css">
+</head>
+<body class="tu-v2">
+<?php
+        if ($isAdm) {
+            require_once __DIR__ . '/suite_nav.php';
+            suite_nav_render($activeModule, '');
+        }
+?>
+<div class="<?= $isAdm ? 'tu-main' : '' ?>">
+  <div class="tu-topbar">
+    <div class="tu-bc">
+      <a href="<?= $e($base . '/index.php') ?>" style="color:inherit;text-decoration:none;">Accueil</a>
+      <span class="tu-bc-sep">›</span>
+      <span class="tu-bc-cur"><?= $e($title) ?></span>
+    </div>
+  </div>
+  <div class="tu-pg" style="display:flex;justify-content:center;align-items:flex-start;padding-top:56px;">
+    <div class="tu-card" style="max-width:460px;width:100%;height:auto;align-self:flex-start;padding:32px 30px 28px;text-align:center;">
+      <div style="width:52px;height:52px;margin:0 auto 16px;border-radius:50%;background:var(--tu-red-soft,#fbeae6);color:var(--tu-red-main,#c0432a);display:flex;align-items:center;justify-content:center;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      </div>
+      <div style="font-size:19px;font-weight:700;margin-bottom:6px;"><?= $e($title) ?></div>
+      <p style="font-size:14px;line-height:1.55;color:var(--tu-ink-500,#6b5d4d);margin:0;"><?= $e($message) ?></p>
+      <?php if ($isAdm): ?>
+      <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:20px;padding-top:18px;border-top:1px solid var(--tu-ink-100,#eadfce);font-size:12.5px;color:var(--tu-ink-500,#6b5d4d);">
+        <span>Connecté : <strong style="color:var(--tu-ink-900,#2b2118);"><?= $e($who) ?></strong> · <?= $e($roleLabel) ?></span>
+        <?php if ($requiredLabel !== ''): ?><span>Rôle requis : <strong style="color:var(--tu-ink-900,#2b2118);"><?= $e($requiredLabel) ?></strong></span><?php endif; ?>
+      </div>
+      <?php else: ?>
+      <a href="<?= $e(suite_login_url()) ?>" class="tu-btn tu-btn-p" style="display:inline-flex;margin-top:20px;">Se connecter</a>
+      <?php endif; ?>
+    </div>
+  </div>
+</div>
+</body>
+</html>
+<?php
+        exit;
+    }
+}
+
+/* ====================================================================
    PROTECTION GLOBALE DE /TOOLS/ (AVEC EXCEPTIONS INTELLIGENTES)
    ==================================================================== */
 
@@ -484,5 +688,15 @@ if (!$suiteIsCli) {
         $requested_url = $_SERVER['REQUEST_URI'] ?? '';
         header('Location: ' . suite_base() . '/admin/login.php?next=' . urlencode($requested_url));
         exit;
+    }
+
+    // Droits par module : un admin connecté doit aussi avoir accès au module
+    // demandé (voir "DROITS PAR MODULE" plus haut, gérés par le super admin).
+    if (!$is_public_page && is_admin()) {
+        $reqPath = parse_url((string)($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?: '/';
+        $reqModule = suite_module_from_path($reqPath);
+        if ($reqModule !== null && !module_access($reqModule)) {
+            suite_forbidden("Vous n'avez pas accès à ce module. Si vous en avez besoin, demandez-le à un super administrateur.");
+        }
     }
 }

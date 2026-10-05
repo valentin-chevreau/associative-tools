@@ -3,7 +3,7 @@
  * prospection/contact_detail.php — fiche structure + historique de suivi par année.
  */
 require_once __DIR__ . '/../shared/bootstrap.php';
-require_admin_plus();
+require_admin(); // l'accès au module est contrôlé par shared/bootstrap.php (droits par module)
 
 require_once __DIR__ . '/../config_db.php';
 require_once 'functions_prospection.php';
@@ -75,8 +75,7 @@ $resumeAnnees = prospection_resume_annees_contact($historique);
 
 $typeLabels = ['contact' => '📞 Contact', 'rappel' => '🔔 À rappeler', 'note' => '📝 Note'];
 
-$base = function_exists('suite_base') ? suite_base() : '';
-$suiteNavV2 = __DIR__ . '/../shared/suite_nav.php';
+$base = suite_base();
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -87,7 +86,7 @@ $suiteNavV2 = __DIR__ . '/../shared/suite_nav.php';
   <link rel="stylesheet" href="<?= h($base) ?>/assets/css/suite_nav.css">
 </head>
 <body class="tu-v2">
-<?php if (is_file($suiteNavV2)): require_once $suiteNavV2; suite_nav_render('prospection', 'prospection-toutes'); endif; ?>
+<?php require_once __DIR__ . '/../shared/suite_nav.php'; suite_nav_render('prospection', 'prospection-toutes'); ?>
 
 <div class="tu-main">
   <div class="tu-topbar">

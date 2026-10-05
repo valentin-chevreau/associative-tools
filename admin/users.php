@@ -3,10 +3,6 @@
 
 declare(strict_types=1);
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
 require_once __DIR__ . '/../shared/bootstrap.php';
 
 if (!defined('APP_BASE')) {
@@ -14,9 +10,7 @@ if (!defined('APP_BASE')) {
 }
 
 if (!is_admin_plus()) {
-    http_response_code(403);
-    echo "Accès réservé aux administrateurs principaux.";
-    exit;
+    suite_forbidden("La gestion des utilisateurs est réservée aux administrateurs principaux (Admin+).", "Accès refusé", "users", "Admin+");
 }
 
 $pdo = _bootstrap_get_pdo();
@@ -91,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // ── Actions sur un bénévole existant ────────────────────────────────────
     $volunteerId = (int)($_POST['volunteer_id'] ?? 0);
     if ($volunteerId > 0 && $action !== 'create_volunteer') {
-        $chk = $pdo->prepare("SELECT id, first_name, last_name FROM users WHERE id = ?");
+        $chk = $pdo->prepare("SELECT id, first_name, last_name FROM users WHERE id = ? AND deleted_at IS NULL");
         $chk->execute([$volunteerId]);
         $vol = $chk->fetch(PDO::FETCH_ASSOC);
 
@@ -134,6 +128,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->prepare("UPDATE users SET is_active = ? WHERE id = ?")->execute([$newStatus, $volunteerId]);
                 audit_log('admin', 'update', 'volunteer', $volunteerId, $fullName, ['action' => $newStatus ? 'activate' : 'deactivate']);
                 $success = $newStatus ? "$fullName réactivé." : "$fullName désactivé.";
+            }
+
+            // Suppression : réservée au super admin. La ligne reste en base (deleted_at)
+            // pour que les inscriptions au planning, présences de documents, journal
+            // d'audit, etc. gardent leur lien et leur nom — seul le compte disparaît
+            // des listes, perd son accès, et quitte les groupes.
+            if ($action === 'delete_user') {
+                if (!is_super_admin()) {
+                    $errors[] = "Seul un super admin peut supprimer un utilisateur.";
+                } elseif ($volunteerId === current_volunteer_id()) {
+                    $errors[] = "Vous ne pouvez pas supprimer votre propre compte.";
+                } else {
+                    $pdo->beginTransaction();
+                    try {
+                        $pdo->prepare("UPDATE users SET deleted_at = NOW(), is_active = 0, role = NULL, access_code = NULL WHERE id = ?")
+                            ->execute([$volunteerId]);
+                        $pdo->prepare("DELETE FROM volunteer_group_members WHERE volunteer_id = ?")->execute([$volunteerId]);
+                        try {
+                            $pdo->prepare("DELETE FROM suite_user_permissions WHERE user_id = ?")->execute([$volunteerId]);
+                        } catch (Throwable $e) { /* table de droits pas encore migrée */ }
+                        $pdo->commit();
+                        audit_log('admin', 'delete', 'volunteer', $volunteerId, $fullName, ['soft_delete' => true]);
+                        $success = "$fullName supprimé. Son historique (inscriptions, présences…) est conservé.";
+                    } catch (Throwable $e) {
+                        $pdo->rollBack();
+                        error_log('delete_user failed: ' . $e->getMessage());
+                        $errors[] = "Suppression impossible : " . $e->getMessage();
+                    }
+                }
             }
 
             if ($action === 'grant_access') {
@@ -206,7 +229,7 @@ $fActive   = trim($_GET['active'] ?? ''); // '' | '1' | '0'
 
 $sql = "SELECT id, first_name, last_name, email, phone, access_code, role, member_function, presence_status,
                code_created_at, last_login_at, is_active
-        FROM users WHERE 1=1";
+        FROM users WHERE deleted_at IS NULL";
 $params = [];
 if ($search !== '') {
     $sql .= " AND (first_name LIKE ? OR last_name LIKE ? OR email LIKE ?)";
@@ -236,7 +259,7 @@ if ($editTargetId > 0) {
     }
     if ($editTarget === null) {
         // Pas dans la page courante (filtres actifs) : on va le chercher directement.
-        $q = $pdo->prepare("SELECT id, first_name, last_name, email, phone, access_code, role, member_function, presence_status, code_created_at, last_login_at, is_active FROM users WHERE id = ?");
+        $q = $pdo->prepare("SELECT id, first_name, last_name, email, phone, access_code, role, member_function, presence_status, code_created_at, last_login_at, is_active FROM users WHERE id = ? AND deleted_at IS NULL");
         $q->execute([$editTargetId]);
         $editTarget = $q->fetch(PDO::FETCH_ASSOC) ?: null;
     }
@@ -306,6 +329,10 @@ suite_nav_render('users', '');
   </div>
   <div class="tu-topbar-acts">
     <a href="groups.php" class="tu-btn tu-btn-s tu-btn-sm">Groupes</a>
+    <?php if (is_super_admin()): ?>
+      <a href="permissions.php" class="tu-btn tu-btn-s tu-btn-sm">Droits</a>
+      <a href="branding.php" class="tu-btn tu-btn-s tu-btn-sm">Logo</a>
+    <?php endif; ?>
     <button class="tu-btn tu-btn-p tu-btn-sm" onclick="openCreateModal()">+ Nouveau bénévole</button>
   </div>
 </div>
@@ -470,6 +497,14 @@ suite_nav_render('users', '');
                     <input type="hidden" name="new_status" value="<?= $isActive ? 0 : 1 ?>">
                     <button type="submit" class="tu-btn <?= $isActive ? 'tu-btn-d' : 'tu-btn-s' ?> tu-btn-xs"><?= $isActive ? 'Désactiver' : 'Réactiver' ?></button>
                   </form>
+                  <?php if (is_super_admin() && (int)$v['id'] !== (int)current_volunteer_id()): ?>
+                    <a href="permissions.php?user=<?= (int)$v['id'] ?>" class="tu-btn tu-btn-s tu-btn-xs" title="Droits particuliers">Droits</a>
+                    <form method="post" style="display:inline;" onsubmit="return confirm('Supprimer <?= h(addslashes($fullName)) ?> ?\n\nLe compte disparaît des listes et perd tout accès, mais son historique (inscriptions au planning, présences, journal) est conservé.');">
+                      <input type="hidden" name="action" value="delete_user">
+                      <input type="hidden" name="volunteer_id" value="<?= (int)$v['id'] ?>">
+                      <button type="submit" class="tu-btn tu-btn-d tu-btn-xs">Supprimer</button>
+                    </form>
+                  <?php endif; ?>
                 </div>
               </td>
             </tr>

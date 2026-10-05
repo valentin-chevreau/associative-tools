@@ -8,7 +8,7 @@
  * temporaire écrit sur le disque).
  */
 require_once __DIR__ . '/../shared/bootstrap.php';
-require_admin_plus();
+require_admin(); // l'accès au module est contrôlé par shared/bootstrap.php (droits par module)
 
 require_once __DIR__ . '/../config_db.php';
 require_once 'functions_prospection.php';
@@ -199,8 +199,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['step'] ?? '') === 'confirm
 if ($pending && !$resultat) $etape = 'mappage';
 
 $champsCibles = prospection_import_champs_cibles();
-$base = function_exists('suite_base') ? suite_base() : '';
-$suiteNavV2 = __DIR__ . '/../shared/suite_nav.php';
+$base = suite_base();
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -211,7 +210,7 @@ $suiteNavV2 = __DIR__ . '/../shared/suite_nav.php';
   <link rel="stylesheet" href="<?= h($base) ?>/assets/css/suite_nav.css">
 </head>
 <body class="tu-v2">
-<?php if (is_file($suiteNavV2)): require_once $suiteNavV2; suite_nav_render('prospection', 'prospection-import'); endif; ?>
+<?php require_once __DIR__ . '/../shared/suite_nav.php'; suite_nav_render('prospection', 'prospection-import'); ?>
 
 <div class="tu-main">
   <div class="tu-topbar">
