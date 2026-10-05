@@ -16,6 +16,15 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
     $isAdminPlus  = in_array($role, ['admin_plus', 'super_admin'], true);
     $isSuperAdmin = ($role === 'super_admin');
 
+    // Accès aux modules (droits gérés par le super admin). Un visiteur non
+    // connecté garde la sidebar publique historique (les pages protégées le
+    // renvoient de toute façon vers la connexion).
+    $can = static function (string $module) use ($isAdmin): bool {
+        if (!$isAdmin) return in_array($module, ['planning', 'caisse', 'logistique', 'annuaire'], true);
+        return module_access($module);
+    };
+    $showGestion = $can('adhesions') || $can('subventions') || $can('donations') || $can('prospection') || $can('documents');
+
     $roleLabel = match($role) {
         'super_admin' => 'Super admin',
         'admin_plus'  => 'Admin+',
@@ -47,17 +56,20 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
     ?>
 <aside class="tu-sb" id="tu-sidebar">
 
-  <a href="<?= h2($base . '/index.php') ?>" class="tu-sb-brand">
-    <div class="tu-sb-logo">TU</div>
-    <div>
-      <div class="tu-sb-name">Touraine-Ukraine</div>
-      <div class="tu-sb-sub">Suite associative</div>
-    </div>
+  <a href="<?= h2($base . '/index.php') ?>" class="tu-sb-brand" style="justify-content:center;">
+    <?php $suiteLogo = function_exists('suite_logo_data_uri') ? suite_logo_data_uri() : null; ?>
+    <?php if ($suiteLogo): ?>
+      <div class="tu-sb-logo" style="background:#fff;padding:3px;"><img src="<?= $suiteLogo ?>" alt="" style="width:100%;height:100%;object-fit:contain;display:block;"></div>
+    <?php else: ?>
+      <div class="tu-sb-logo">TU</div>
+    <?php endif; ?>
+    <div class="tu-sb-name" style="font-size:14px;">Touraine-Ukraine</div>
   </a>
 
   <nav class="tu-sb-nav">
-    <span class="tu-sb-sec">Modules</span>
+    <span class="tu-sb-sec">Terrain</span>
 
+    <?php if ($can('planning')): ?>
     <!-- PLANNING -->
     <a href="<?= h2($base . '/planning/events.php') ?>"
        class="tu-sb-item <?= _mod_active('planning', $activeModule) ?>"
@@ -90,7 +102,9 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
       <?php endif; ?>
     </div>
     <?php endif; ?>
+    <?php endif; ?>
 
+    <?php if ($can('caisse')): ?>
     <!-- CAISSE -->
     <a href="<?= h2($base . '/caisse/index.php') ?>"
        class="tu-sb-item <?= _mod_active('caisse', $activeModule) ?>"
@@ -128,7 +142,9 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
       <?php endif; ?>
     </div>
     <?php endif; ?>
+    <?php endif; ?>
 
+    <?php if ($can('logistique')): ?>
     <!-- LOGISTIQUE -->
     <a href="<?= h2($base . '/logistique/index.php') ?>"
        class="tu-sb-item <?= _mod_active('logistique', $activeModule) ?>"
@@ -173,6 +189,9 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
     </div>
     <?php endif; ?>
 
+    <?php endif; ?>
+
+    <?php if ($can('annuaire')): ?>
     <!-- ANNUAIRE -->
     <a href="<?= h2($base . '/logistique/families/index.php') ?>"
        class="tu-sb-item <?= _mod_active('annuaire', $activeModule) ?>"
@@ -184,8 +203,14 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
       </svg>
       Annuaire
     </a>
+    <?php endif; ?>
 
-    <?php if ($isAdmin): ?>
+    <?php if ($showGestion): ?>
+    <div class="tu-sb-div"></div>
+    <span class="tu-sb-sec">Gestion associative</span>
+    <?php endif; ?>
+
+    <?php if ($can('adhesions')): ?>
     <!-- ADHÉSIONS -->
     <a href="<?= h2($base . '/adhesions/index.php') ?>"
        class="tu-sb-item <?= _mod_active('adhesions', $activeModule) ?>"
@@ -211,7 +236,9 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
       <?php endif; ?>
     </div>
     <?php endif; ?>
+    <?php endif; ?>
 
+    <?php if ($can('subventions')): ?>
     <!-- SUBVENTIONS -->
     <a href="<?= h2($base . '/subventions/index.php') ?>"
        class="tu-sb-item <?= _mod_active('subventions', $activeModule) ?>"
@@ -238,7 +265,7 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
     <?php endif; ?>
     <?php endif; ?>
 
-    <?php if ($isAdminPlus): ?>
+    <?php if ($can('donations')): ?>
     <!-- DONS (module autonome — extrait de planning, base unifiée) -->
     <a href="<?= h2($base . '/donations/index.php') ?>"
        class="tu-sb-item <?= _mod_active('donations', $activeModule) ?>"
@@ -254,7 +281,7 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
     </a>
     <?php endif; ?>
 
-    <?php if ($isAdminPlus): ?>
+    <?php if ($can('prospection')): ?>
     <!-- PROSPECTION -->
     <?php
       // Catégories listées en dur (comme nav.config.php) pour éviter une requête
@@ -303,7 +330,7 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
     <?php endif; ?>
 
     <!-- DOCUMENTS -->
-    <?php if ($isAdmin): ?>
+    <?php if ($can('documents')): ?>
     <a href="<?= h2($base . '/documents/index.php') ?>"
        class="tu-sb-item <?= _mod_active('documents', $activeModule) ?>"
        id="snav-documents">
@@ -375,6 +402,19 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
         <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
       </svg>
       Migrations SQL
+    </a>
+    <?php endif; ?>
+
+    <?php if ($can('site_backoffice')): ?>
+    <!-- BACKOFFICE DU SITE INTERNET (nouvel onglet) -->
+    <a href="<?= h2(SITE_BACKOFFICE_URL) ?>" target="_blank" rel="noopener"
+       class="tu-sb-item"
+       id="snav-site-backoffice">
+      <svg class="tu-sb-ico" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>
+      </svg>
+      Backoffice du site
     </a>
     <?php endif; ?>
 

@@ -38,7 +38,7 @@ function portal_item_desc(array $it): string {
 $priority = [
     'Planning' => 10, 'Convois' => 20, 'Stock local' => 30, 'Étiquettes' => 40,
     'Caisse' => 50, 'Annuaire' => 55, 'Adhésions' => 60, 'Subventions' => 65,
-    'Dons' => 70, "Rapport d'activité" => 80,
+    'Dons' => 70, 'Prospection' => 72, 'Documents' => 75, "Rapport d'activité" => 80,
 ];
 
 usort($items, function($a, $b) use ($priority) {
@@ -47,11 +47,11 @@ usort($items, function($a, $b) use ($priority) {
     return $pa !== $pb ? $pa <=> $pb : strcmp((string)($a['label']??''), (string)($b['label']??''));
 });
 
-$publicItems = array_values(array_filter($items, fn($it) => ((string)($it['min_role'] ?? 'public')) === 'public'));
-$adminItems  = array_values(array_filter($items, fn($it) => ((string)($it['min_role'] ?? 'public')) !== 'public'));
+// Regroupement identique à la sidebar : Terrain / Gestion associative / Administration.
+$terrainItems = array_values(array_filter($items, fn($it) => ($it['group'] ?? 'terrain') === 'terrain'));
+$gestionItems = array_values(array_filter($items, fn($it) => ($it['group'] ?? '') === 'gestion'));
+$showBackoffice = module_access('site_backoffice');
 
-$role = function_exists('current_role') ? current_role() : 'public';
-$isAdminPlus = ($role === 'admin_plus');
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -82,14 +82,12 @@ $isAdminPlus = ($role === 'admin_plus');
       </div>
     </div>
 
-    <?php if (!empty($publicItems)): ?>
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--tu-ink-300);margin-bottom:12px;">Modules</div>
+    <?php if (!empty($terrainItems)): ?>
+      <div class="tu-portal-sec">Terrain</div>
       <div class="tu-portal-grid tu-mb4">
-        <?php foreach ($publicItems as $it): ?>
+        <?php foreach ($terrainItems as $it): ?>
           <a href="<?= h(portal_item_href($it)) ?>" class="tu-portal-card">
-            <div class="tu-pc-ico">
-              <?= card_icon_emoji((string)($it['icon'] ?? '')) ?>
-            </div>
+            <div class="tu-pc-ico"><?= card_icon_emoji((string)($it['icon'] ?? '')) ?></div>
             <div class="tu-pc-name"><?= h((string)($it['label'] ?? '')) ?></div>
             <div class="tu-pc-desc"><?= h(portal_item_desc($it)) ?></div>
             <div class="tu-pc-foot"><span class="tu-pc-link">Ouvrir →</span></div>
@@ -98,22 +96,29 @@ $isAdminPlus = ($role === 'admin_plus');
       </div>
     <?php endif; ?>
 
-    <?php if (!empty($adminItems)): ?>
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--tu-ink-300);margin-bottom:12px;">Administration</div>
-      <div class="tu-portal-grid">
-        <?php foreach ($adminItems as $it): ?>
+    <?php if (!empty($gestionItems)): ?>
+      <div class="tu-portal-sec">Gestion associative</div>
+      <div class="tu-portal-grid tu-mb4">
+        <?php foreach ($gestionItems as $it): ?>
           <a href="<?= h(portal_item_href($it)) ?>" class="tu-portal-card tu-portal-card-admin">
-            <div class="tu-pc-ico">
-              <?= card_icon_emoji((string)($it['icon'] ?? '')) ?>
-            </div>
+            <div class="tu-pc-ico"><?= card_icon_emoji((string)($it['icon'] ?? '')) ?></div>
             <div class="tu-pc-name"><?= h((string)($it['label'] ?? '')) ?></div>
             <div class="tu-pc-desc"><?= h(portal_item_desc($it)) ?></div>
-            <div class="tu-pc-foot">
-              <span class="tu-pc-link">Ouvrir →</span>
-              <span class="tu-bdg tu-bdg-amber" style="font-size:10px;"><?= h((string)($it['min_role'] ?? 'admin')) ?></span>
-            </div>
+            <div class="tu-pc-foot"><span class="tu-pc-link">Ouvrir →</span></div>
           </a>
         <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
+
+    <?php if ($showBackoffice): ?>
+      <div class="tu-portal-sec">Administration</div>
+      <div class="tu-portal-grid">
+        <a href="<?= h(SITE_BACKOFFICE_URL) ?>" target="_blank" rel="noopener" class="tu-portal-card tu-portal-card-admin">
+          <div class="tu-pc-ico">🌐</div>
+          <div class="tu-pc-name">Backoffice du site</div>
+          <div class="tu-pc-desc">Gérer le site internet grand public</div>
+          <div class="tu-pc-foot"><span class="tu-pc-link">Ouvrir ↗</span></div>
+        </a>
       </div>
     <?php endif; ?>
 
@@ -131,12 +136,15 @@ function card_icon_emoji(string $name): string {
         'users'     => '👥',
         'id-card'   => '🪪',
         'briefcase' => '🗂',
+        'gift'      => '🎁',
+        'file'      => '📄',
         default     => '⚙️',
     };
 }
 ?>
 
 <style>
+.tu-portal-sec { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--tu-ink-300);margin-bottom:12px; }
 .tu-portal-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
