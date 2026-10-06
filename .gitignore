@@ -2,4 +2,4 @@
 /uploads/
 var/
 cache/
-config_db.php
+shared/DEBUG_ON

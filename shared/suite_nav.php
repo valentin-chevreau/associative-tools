@@ -251,12 +251,6 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
          class="tu-sb-item <?= _nav_active('subventions-list', $activeItem, $activeModule, 'subventions') ?>">
         Liste demandes
       </a>
-      <?php if ($isAdminPlus): ?>
-      <a href="<?= h2($base . '/subventions/stats.php') ?>"
-         class="tu-sb-item <?= _nav_active('subventions-stats', $activeItem, $activeModule, 'subventions') ?>">
-        Statistiques
-      </a>
-      <?php endif; ?>
     </div>
     <?php endif; ?>
     <?php endif; ?>

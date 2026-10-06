@@ -181,36 +181,17 @@ if (!function_exists('_bootstrap_get_pdo')) {
         if ($pdo instanceof PDO) return $pdo;
 
         // $pdo n'existe pas encore dans la portée appelante (ex: login.php
-        // qui inclut bootstrap.php avant tout db.php) -> on se connecte nous-mêmes
-        // en réutilisant le même config.php que les modules (logistique/config.php),
-        // qui définit DB_HOST / DB_NAME / DB_USER / DB_PASS.
+        // qui inclut bootstrap.php avant tout db.php) -> on récupère la connexion unique.
         static $localPdo = null;
         if ($localPdo instanceof PDO) return $localPdo;
 
-        if (!defined('DB_HOST')) {
-            $candidates = [
-                __DIR__ . '/../logistique/config.php',
-                __DIR__ . '/../planning/config.php',
-                __DIR__ . '/../caisse/config.php',
-                __DIR__ . '/config_db.php',
-            ];
-            foreach ($candidates as $cfg) {
-                if (file_exists($cfg)) { require_once $cfg; break; }
-            }
-        }
-
-        if (!defined('DB_HOST')) return null;
-
+        // Connexion unique de la suite (shared/db.php, identifiants dans .env)
+        require_once __DIR__ . '/db.php';
         try {
-            $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
-            $localPdo = new PDO($dsn, DB_USER, DB_PASS, [
-                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES   => false,
-            ]);
+            $localPdo = suite_pdo();
             $pdo = $localPdo; // expose aussi globalement pour le reste de la requête
             return $localPdo;
-        } catch (PDOException $e) {
+        } catch (Throwable $e) {
             error_log('bootstrap.php: connexion DB impossible: ' . $e->getMessage());
             return null;
         }

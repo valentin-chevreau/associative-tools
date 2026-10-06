@@ -148,7 +148,7 @@ if (!function_exists('nav_items')) {
     add_if_exists($adhesionsChildren, 'Cotisations',  $root . '/adhesions/cotisations/index.php',  $base . '/adhesions/cotisations/index.php', 'admin');
     add_if_exists($adhesionsChildren, 'Documents',    $root . '/adhesions/documents/index.php',    $base . '/adhesions/documents/index.php', 'admin');
     add_if_exists($adhesionsChildren, 'Nouveau membre',  $root . '/adhesions/membres/add.php',     $base . '/adhesions/membres/add.php', 'admin', 'Admin');
-    add_if_exists($adhesionsChildren, 'Statistiques',    $root . '/adhesions/stats.php',           $base . '/adhesions/stats.php', 'admin_plus', 'Admin');
+    add_if_exists($adhesionsChildren, 'Statistiques',    $root . '/adhesions/statistiques.php',           $base . '/adhesions/statistiques.php', 'admin_plus', 'Admin');
 
     // ======================
     // Subventions (ADMIN uniquement)
@@ -159,7 +159,6 @@ if (!function_exists('nav_items')) {
     add_if_exists($subventionsChildren, 'Versements',     $root . '/subventions/versements/index.php',   $base . '/subventions/versements/index.php', 'admin');
     add_if_exists($subventionsChildren, 'Documents',      $root . '/subventions/documents/index.php',    $base . '/subventions/documents/index.php', 'admin');
     add_if_exists($subventionsChildren, 'Nouvelle demande', $root . '/subventions/demandes/add.php',    $base . '/subventions/demandes/add.php', 'admin', 'Admin');
-    add_if_exists($subventionsChildren, 'Statistiques',     $root . '/subventions/stats.php',           $base . '/subventions/stats.php', 'admin_plus', 'Admin');
 
     // ======================
     // Dons (HelloAsso + manuel — module autonome, ADMIN+ uniquement)
