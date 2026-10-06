@@ -6,7 +6,8 @@
 require_once __DIR__ . '/../shared/bootstrap.php';
 require_admin(); // accès au module contrôlé par shared/bootstrap.php (droits par module)
 
-require_once __DIR__ . '/../config_db.php';
+require_once __DIR__ . '/../shared/db.php';
+$pdo = suite_pdo();
 require_once 'functions_prospection.php';
 
 function h($s): string { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
@@ -25,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['bulk_action'])) {
 
     $resultatMasse = ['ok' => 0, 'fail' => 0];
     if (is_array($ids) && !empty($ids) && in_array($bulkAction, ['desactiver', 'supprimer', 'priorite', 'statut'], true)) {
-        $resultatMasse = prospection_action_masse($conn, $bulkAction, $ids, $options);
+        $resultatMasse = prospection_action_masse($pdo, $bulkAction, $ids, $options);
     }
 
     $redirectQs = (string)($_POST['redirect_qs'] ?? '');
@@ -45,7 +46,7 @@ $triCol = trim((string)($_GET['tri'] ?? ''));
 if (!isset($colonnesTri[$triCol])) $triCol = '';
 $triDir = strtolower((string)($_GET['dir'] ?? '')) === 'desc' ? 'desc' : 'asc';
 
-$categories = get_categories_prospection($conn);
+$categories = get_categories_prospection($pdo);
 $categorieActuelle = null;
 $filters = [];
 if ($categorieCode !== '') {
@@ -64,16 +65,16 @@ if ($contactAnnee !== '' && str_contains($contactAnnee, ':')) {
     }
 }
 
-$contacts = get_liste_contacts_prospection($conn, $filters, $triCol ?: null, $triDir);
-$stats    = get_stats_prospection($conn, $filters);
+$contacts = get_liste_contacts_prospection($pdo, $filters, $triCol ?: null, $triDir);
+$stats    = get_stats_prospection($pdo, $filters);
 
 // KPI "contactées / non contactées" pour l'année en cours et l'année N-1,
 // sur le périmètre des filtres hors ceux liés au contact par année.
 $filtresKpi = $filters;
 unset($filtresKpi['annee_contact'], $filtresKpi['annee_non_contact']);
 $anneeCourante = (int)date('Y');
-$statsAnneeCourante = get_stats_annee_prospection($conn, $filtresKpi, $anneeCourante);
-$statsAnneePrecedente = get_stats_annee_prospection($conn, $filtresKpi, $anneeCourante - 1);
+$statsAnneeCourante = get_stats_annee_prospection($pdo, $filtresKpi, $anneeCourante);
+$statsAnneePrecedente = get_stats_annee_prospection($pdo, $filtresKpi, $anneeCourante - 1);
 
 // Familles distinctes (pour le filtre), dans l'ordre des catégories
 $familles = [];
@@ -262,7 +263,7 @@ $qsBaseTri = ['categorie' => $categorieCode, 'famille' => $familleFiltre, 'statu
             </tr>
           </thead>
           <tbody>
-            <?php $count = 0; while ($row = mysqli_fetch_assoc($contacts)):
+            <?php $count = 0; foreach ($contacts as $row):
               $count++;
               $categorieTxt = prospection_libelle_categorie($row['famille_label']) . ' — ' . prospection_libelle_categorie($row['categorie_label']);
               $adresseDecoupee = prospection_decouper_adresse($row['adresse'] ?? null);
@@ -299,7 +300,7 @@ $qsBaseTri = ['categorie' => $categorieCode, 'famille' => $familleFiltre, 'statu
                 <td class="prosp-td-trunc" style="font-size:12px;"><?= $row['priorite'] ? h(prospection_libelle_priorite($row['priorite'])) : '—' ?></td>
                 <td class="prosp-td-trunc"><span class="tu-bdg <?= h(PROSPECTION_STATUT_BADGES[$row['statut']] ?? 'tu-bdg-ink') ?>"><?= h(PROSPECTION_STATUTS[$row['statut']] ?? $row['statut']) ?></span></td>
               </tr>
-            <?php endwhile; ?>
+            <?php endforeach; ?>
             <?php if ($count === 0): ?>
               <tr><td colspan="7" style="text-align:center;padding:28px;color:var(--tu-ink-300);">Aucune fiche pour ces critères.</td></tr>
             <?php endif; ?>

@@ -5,7 +5,8 @@
 require_once __DIR__ . '/../shared/bootstrap.php';
 require_admin(); // l'accès au module est contrôlé par shared/bootstrap.php (droits par module)
 
-require_once __DIR__ . '/../config_db.php';
+require_once __DIR__ . '/../shared/db.php';
+$pdo = suite_pdo();
 require_once 'functions_prospection.php';
 
 function h($s): string { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
@@ -13,12 +14,12 @@ function h($s): string { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'
 $id = $_GET['id'] ?? null;
 $contact = null; $mode = 'creation';
 if ($id) {
-    $contact = get_contact_prospection($conn, $id);
+    $contact = get_contact_prospection($pdo, $id);
     if (!$contact) { header('Location: index.php'); exit; }
     $mode = 'modification';
 }
 
-$categories = get_categories_prospection($conn);
+$categories = get_categories_prospection($pdo);
 $error = '';
 $categorieIdPreselect = ($mode === 'creation') ? (int)($_GET['categorie_id'] ?? 0) : 0;
 
@@ -42,12 +43,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$categorieId) {
             $error = 'La catégorie est obligatoire.';
         } else {
-            $newId = creer_contact_prospection($conn, $categorieId, $data);
+            $newId = creer_contact_prospection($pdo, $categorieId, $data);
             if ($newId) { header("Location: contact_detail.php?id=$newId&success=1"); exit; }
             $error = 'Erreur lors de la création.';
         }
     } else {
-        if (modifier_contact_prospection($conn, (int)$id, $data)) { header("Location: contact_detail.php?id=$id&success=1"); exit; }
+        if (modifier_contact_prospection($pdo, (int)$id, $data)) { header("Location: contact_detail.php?id=$id&success=1"); exit; }
         $error = 'Erreur lors de la modification.';
     }
 }

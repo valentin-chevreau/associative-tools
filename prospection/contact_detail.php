@@ -5,14 +5,15 @@
 require_once __DIR__ . '/../shared/bootstrap.php';
 require_admin(); // l'accès au module est contrôlé par shared/bootstrap.php (droits par module)
 
-require_once __DIR__ . '/../config_db.php';
+require_once __DIR__ . '/../shared/db.php';
+$pdo = suite_pdo();
 require_once 'functions_prospection.php';
 
 function h($s): string { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 
 $id = $_GET['id'] ?? null;
 if (!$id) { header('Location: index.php'); exit; }
-$contact = get_contact_prospection($conn, $id);
+$contact = get_contact_prospection($pdo, $id);
 if (!$contact) { header('Location: index.php'); exit; }
 
 $message = $error = '';
@@ -29,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $valeur = $dateSuivi !== '' ? $dateSuivi . ' — ' . $texte : $texte;
         if ($texte === '') {
             $error = 'Le commentaire est obligatoire.';
-        } elseif (ajouter_suivi_prospection($conn, (int)$id, $type, $valeur, $auteurCourant)) {
+        } elseif (ajouter_suivi_prospection($pdo, (int)$id, $type, $valeur, $auteurCourant)) {
             $message = 'Suivi ajouté.';
         } else {
             $error = 'Erreur lors de l\'ajout du suivi.';
@@ -39,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'marquer_annee') {
         $annee = (int)($_POST['annee'] ?? 0);
         $contacte = ($_POST['contacte'] ?? '') === '1';
-        if ($annee > 0 && prospection_marquer_annee_contact($conn, (int)$id, $annee, $contacte, $auteurCourant)) {
+        if ($annee > 0 && prospection_marquer_annee_contact($pdo, (int)$id, $annee, $contacte, $auteurCourant)) {
             $message = $contacte ? "Année $annee marquée contactée." : "Année $annee démarquée.";
         } else {
             $error = 'Erreur lors de la mise à jour de l\'année.';
@@ -48,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'supprimer_suivi') {
         $suiviId = (int)($_POST['suivi_id'] ?? 0);
-        if ($suiviId > 0 && supprimer_suivi_prospection($conn, $suiviId, (int)$id)) {
+        if ($suiviId > 0 && supprimer_suivi_prospection($pdo, $suiviId, (int)$id)) {
             $message = 'Entrée d\'historique supprimée.';
         } else {
             $error = 'Erreur lors de la suppression de l\'entrée.';
@@ -56,21 +57,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'desactiver' && is_admin_plus()) {
-        if (desactiver_contact_prospection($conn, (int)$id)) { header("Location: index.php?deactivated=1"); exit; }
+        if (desactiver_contact_prospection($pdo, (int)$id)) { header("Location: index.php?deactivated=1"); exit; }
         $error = 'Erreur lors de la désactivation.';
     }
 
     if ($action === 'supprimer' && is_admin_plus()) {
-        if (supprimer_contact_prospection($conn, (int)$id)) { header("Location: index.php?deleted=1"); exit; }
+        if (supprimer_contact_prospection($pdo, (int)$id)) { header("Location: index.php?deleted=1"); exit; }
         $error = 'Erreur lors de la suppression.';
     }
 
-    $contact = get_contact_prospection($conn, $id);
+    $contact = get_contact_prospection($pdo, $id);
 }
 
 if (!empty($_GET['success'])) $message = 'Fiche enregistrée.';
 
-$historique = get_historique_suivi_prospection($conn, (int)$id);
+$historique = get_historique_suivi_prospection($pdo, (int)$id);
 $resumeAnnees = prospection_resume_annees_contact($historique);
 
 $typeLabels = ['contact' => '📞 Contact', 'rappel' => '🔔 À rappeler', 'note' => '📝 Note'];

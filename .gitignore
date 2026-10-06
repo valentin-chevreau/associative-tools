@@ -3,3 +3,4 @@
 var/
 cache/
 shared/DEBUG_ON
+.vscode/

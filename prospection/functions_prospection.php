@@ -29,14 +29,11 @@ const PROSPECTION_STATUT_BADGES = [
  * Retourne un tableau plat trié famille_sort/sort_order — le regroupement
  * visuel se fait côté appelant sur le champ famille_label.
  */
-function get_categories_prospection($conn, bool $onlyActive = true): array {
+function get_categories_prospection(PDO $pdo, bool $onlyActive = true): array {
     $sql = "SELECT * FROM prospection_categories";
     if ($onlyActive) $sql .= " WHERE is_active = 1";
     $sql .= " ORDER BY famille_sort ASC, sort_order ASC, label ASC";
-    $result = mysqli_query($conn, $sql);
-    $out = [];
-    while ($row = mysqli_fetch_assoc($result)) $out[] = $row;
-    return $out;
+    return $pdo->query($sql)->fetchAll();
 }
 
 /**
@@ -48,18 +45,16 @@ function prospection_libelle_categorie(string $label): string {
     return trim((string)preg_replace('/\s*[-–]\s*FR\s*$/iu', '', $label));
 }
 
-function get_categorie_prospection($conn, $id) {
-    $stmt = mysqli_prepare($conn, "SELECT * FROM prospection_categories WHERE id = ?");
-    mysqli_stmt_bind_param($stmt, 'i', $id);
-    mysqli_stmt_execute($stmt);
-    return mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+function get_categorie_prospection(PDO $pdo, $id) {
+    $stmt = $pdo->prepare("SELECT * FROM prospection_categories WHERE id = ?");
+    $stmt->execute([(int)$id]);
+    return $stmt->fetch();
 }
 
-function get_categorie_prospection_by_code($conn, string $code) {
-    $stmt = mysqli_prepare($conn, "SELECT * FROM prospection_categories WHERE code = ?");
-    mysqli_stmt_bind_param($stmt, 's', $code);
-    mysqli_stmt_execute($stmt);
-    return mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+function get_categorie_prospection_by_code(PDO $pdo, string $code) {
+    $stmt = $pdo->prepare("SELECT * FROM prospection_categories WHERE code = ?");
+    $stmt->execute([$code]);
+    return $stmt->fetch();
 }
 
 /* ────────────────────────────────────────────────────────────────────────
@@ -104,7 +99,7 @@ function prospection_extraire_commune(?string $adresse): ?string {
     return null;
 }
 
-function creer_contact_prospection($conn, int $categorieId, array $data, array $extra = []) {
+function creer_contact_prospection(PDO $pdo, int $categorieId, array $data, array $extra = []) {
     $nom = trim((string)($data['nom'] ?? ''));
     if ($nom === '') return false;
 
@@ -113,7 +108,7 @@ function creer_contact_prospection($conn, int $categorieId, array $data, array $
     $sql = "INSERT INTO prospection_contacts
             (categorie_id, nom, commune, adresse, telephone, email, site_web, contact_referent, priorite, extra_json)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-    $stmt = mysqli_prepare($conn, $sql);
+    $stmt = $pdo->prepare($sql);
     $commune  = $data['commune']  ?? null;
     $adresse  = $data['adresse']  ?? null;
     // Pas de commune renseignée séparément mais une adresse complète disponible
@@ -127,22 +122,21 @@ function creer_contact_prospection($conn, int $categorieId, array $data, array $
     $referent = $data['contact_referent'] ?? null;
     $priorite = $data['priorite'] ?? null;
 
-    mysqli_stmt_bind_param($stmt, 'isssssssss', $categorieId, $nom, $commune, $adresse, $tel, $email, $siteWeb, $referent, $priorite, $extraJson);
-    if (!mysqli_stmt_execute($stmt)) return false;
+    $stmt->execute([$categorieId, $nom, $commune, $adresse, $tel, $email, $siteWeb, $referent, $priorite, $extraJson]);
 
-    $id = mysqli_insert_id($conn);
+    $id = (int)$pdo->lastInsertId();
     if (function_exists('audit_log')) {
         audit_log('prospection', 'creation_fiche', 'contact', $id, $nom);
     }
     return $id;
 }
 
-function modifier_contact_prospection($conn, int $id, array $data): bool {
+function modifier_contact_prospection(PDO $pdo, int $id, array $data): bool {
     $sql = "UPDATE prospection_contacts SET
             nom = ?, commune = ?, adresse = ?, telephone = ?, email = ?,
             site_web = ?, contact_referent = ?, priorite = ?, statut = ?
             WHERE id = ?";
-    $stmt = mysqli_prepare($conn, $sql);
+    $stmt = $pdo->prepare($sql);
     $nom      = trim((string)($data['nom'] ?? ''));
     $commune  = $data['commune']  ?? null;
     $adresse  = $data['adresse']  ?? null;
@@ -153,24 +147,22 @@ function modifier_contact_prospection($conn, int $id, array $data): bool {
     $priorite = $data['priorite'] ?? null;
     $statut   = $data['statut'] ?? 'a_contacter';
 
-    mysqli_stmt_bind_param($stmt, 'sssssssssi', $nom, $commune, $adresse, $tel, $email, $siteWeb, $referent, $priorite, $statut, $id);
-    $ok = mysqli_stmt_execute($stmt);
+    $ok = $stmt->execute([$nom, $commune, $adresse, $tel, $email, $siteWeb, $referent, $priorite, $statut, $id]);
     if ($ok && function_exists('audit_log')) {
         audit_log('prospection', 'modification_fiche', 'contact', $id, $nom);
     }
     return $ok;
 }
 
-function get_contact_prospection($conn, $id) {
-    $stmt = mysqli_prepare($conn, "
+function get_contact_prospection(PDO $pdo, $id) {
+    $stmt = $pdo->prepare("
         SELECT c.*, cat.code AS categorie_code, cat.label AS categorie_label, cat.famille_label
         FROM prospection_contacts c
         JOIN prospection_categories cat ON cat.id = c.categorie_id
         WHERE c.id = ?
     ");
-    mysqli_stmt_bind_param($stmt, 'i', $id);
-    mysqli_stmt_execute($stmt);
-    return mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+    $stmt->execute([(int)$id]);
+    return $stmt->fetch();
 }
 
 /**
@@ -192,7 +184,7 @@ function prospection_colonnes_tri(): array {
 }
 
 /**
- * Construit la clause WHERE (+ params/types mysqli) commune aux requêtes sur
+ * Construit la clause WHERE (+ paramètres) commune aux requêtes sur
  * prospection_contacts, à partir des mêmes clés $filters que
  * get_liste_contacts_prospection() : categorie_id, famille, statut,
  * recherche, et en plus ici annee_contact / annee_non_contact (voir
@@ -200,37 +192,36 @@ function prospection_colonnes_tri(): array {
  */
 function prospection_construire_where(array $filters): array {
     $sql = " WHERE c.actif = 1 ";
-    $params = []; $types = '';
+    $params = [];
 
     if (!empty($filters['categorie_id'])) {
-        $sql .= " AND c.categorie_id = ?"; $params[] = (int)$filters['categorie_id']; $types .= 'i';
+        $sql .= " AND c.categorie_id = ?"; $params[] = (int)$filters['categorie_id'];
     }
     if (!empty($filters['famille'])) {
-        $sql .= " AND cat.famille_label = ?"; $params[] = $filters['famille']; $types .= 's';
+        $sql .= " AND cat.famille_label = ?"; $params[] = $filters['famille'];
     }
     if (!empty($filters['statut'])) {
-        $sql .= " AND c.statut = ?"; $params[] = $filters['statut']; $types .= 's';
+        $sql .= " AND c.statut = ?"; $params[] = $filters['statut'];
     }
     if (!empty($filters['recherche'])) {
         $sql .= " AND (c.nom LIKE ? OR c.commune LIKE ? OR c.adresse LIKE ? OR c.email LIKE ?)";
         $terme = '%' . $filters['recherche'] . '%';
         $params[] = $terme; $params[] = $terme; $params[] = $terme; $params[] = $terme;
-        $types .= 'ssss';
     }
     if (!empty($filters['annee_contact'])) {
         $sql .= " AND EXISTS (SELECT 1 FROM prospection_suivi s WHERE s.contact_id = c.id AND s.type = 'contact' AND s.annee = ?)";
-        $params[] = (int)$filters['annee_contact']; $types .= 'i';
+        $params[] = (int)$filters['annee_contact'];
     }
     if (!empty($filters['annee_non_contact'])) {
         $sql .= " AND NOT EXISTS (SELECT 1 FROM prospection_suivi s WHERE s.contact_id = c.id AND s.type = 'contact' AND s.annee = ?)";
-        $params[] = (int)$filters['annee_non_contact']; $types .= 'i';
+        $params[] = (int)$filters['annee_non_contact'];
     }
 
-    return [$sql, $params, $types];
+    return [$sql, $params];
 }
 
-function get_liste_contacts_prospection($conn, array $filters = [], ?string $triCol = null, string $triDir = 'asc') {
-    [$whereSql, $params, $types] = prospection_construire_where($filters);
+function get_liste_contacts_prospection(PDO $pdo, array $filters = [], ?string $triCol = null, string $triDir = 'asc') {
+    [$whereSql, $params] = prospection_construire_where($filters);
     $sql = "
         SELECT c.*, cat.code AS categorie_code, cat.label AS categorie_label, cat.famille_label
         FROM prospection_contacts c
@@ -246,15 +237,9 @@ function get_liste_contacts_prospection($conn, array $filters = [], ?string $tri
         $sql .= " ORDER BY cat.famille_sort ASC, cat.sort_order ASC, c.nom ASC";
     }
 
-    $stmt = mysqli_prepare($conn, $sql);
-    if ($params) {
-        $refs = [];
-        foreach ($params as $k => $v) $refs[$k] = &$params[$k];
-        array_unshift($refs, $types);
-        call_user_func_array([$stmt, 'bind_param'], $refs);
-    }
-    mysqli_stmt_execute($stmt);
-    return mysqli_stmt_get_result($stmt);
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    return $stmt->fetchAll();
 }
 
 /**
@@ -263,10 +248,10 @@ function get_liste_contacts_prospection($conn, array $filters = [], ?string $tri
  * entrée de suivi type "contact" pour l'année donnée — pour répondre à
  * "combien de fiches n'ont pas été recontactées cette année".
  */
-function get_stats_annee_prospection($conn, array $filters, int $annee): array {
+function get_stats_annee_prospection(PDO $pdo, array $filters, int $annee): array {
     $filtersBase = $filters;
     unset($filtersBase['annee_contact'], $filtersBase['annee_non_contact']);
-    [$whereSql, $params, $types] = prospection_construire_where($filtersBase);
+    [$whereSql, $params] = prospection_construire_where($filtersBase);
 
     $sql = "
         SELECT
@@ -280,35 +265,29 @@ function get_stats_annee_prospection($conn, array $filters, int $annee): array {
         $whereSql
     ";
     array_unshift($params, $annee);
-    $types = 'i' . $types;
 
-    $stmt = mysqli_prepare($conn, $sql);
-    $refs = [];
-    foreach ($params as $k => $v) $refs[$k] = &$params[$k];
-    array_unshift($refs, $types);
-    call_user_func_array([$stmt, 'bind_param'], $refs);
-    mysqli_stmt_execute($stmt);
-    $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt)) ?: ['total' => 0, 'contactees' => 0];
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $row = $stmt->fetch() ?: ['total' => 0, 'contactees' => 0];
 
     $total = (int)$row['total']; $contactees = (int)$row['contactees'];
     return ['annee' => $annee, 'total' => $total, 'contactees' => $contactees, 'non_contactees' => $total - $contactees];
 }
 
-function get_stats_prospection($conn, array $filters = []): array {
-    $result = get_liste_contacts_prospection($conn, $filters);
+function get_stats_prospection(PDO $pdo, array $filters = []): array {
+    $liste = get_liste_contacts_prospection($pdo, $filters);
     $stats = ['total' => 0, 'par_statut' => []];
     foreach (PROSPECTION_STATUTS as $code => $label) $stats['par_statut'][$code] = 0;
-    while ($row = mysqli_fetch_assoc($result)) {
+    foreach ($liste as $row) {
         $stats['total']++;
         $stats['par_statut'][$row['statut']] = ($stats['par_statut'][$row['statut']] ?? 0) + 1;
     }
     return $stats;
 }
 
-function desactiver_contact_prospection($conn, int $id): bool {
-    $stmt = mysqli_prepare($conn, "UPDATE prospection_contacts SET actif = 0 WHERE id = ?");
-    mysqli_stmt_bind_param($stmt, 'i', $id);
-    $ok = mysqli_stmt_execute($stmt);
+function desactiver_contact_prospection(PDO $pdo, int $id): bool {
+    $stmt = $pdo->prepare("UPDATE prospection_contacts SET actif = 0 WHERE id = ?");
+    $ok = $stmt->execute([$id]);
     if ($ok && function_exists('audit_log')) {
         audit_log('prospection', 'desactivation_fiche', 'contact', $id);
     }
@@ -321,13 +300,12 @@ function desactiver_contact_prospection($conn, int $id): bool {
  * à desactiver_contact_prospection(), c'est irréversible — on journalise le
  * nom avant suppression pour garder une trace dans le journal d'audit.
  */
-function supprimer_contact_prospection($conn, int $id): bool {
-    $contact = get_contact_prospection($conn, $id);
+function supprimer_contact_prospection(PDO $pdo, int $id): bool {
+    $contact = get_contact_prospection($pdo, $id);
     if (!$contact) return false;
 
-    $stmt = mysqli_prepare($conn, "DELETE FROM prospection_contacts WHERE id = ?");
-    mysqli_stmt_bind_param($stmt, 'i', $id);
-    $ok = mysqli_stmt_execute($stmt);
+    $stmt = $pdo->prepare("DELETE FROM prospection_contacts WHERE id = ?");
+    $ok = $stmt->execute([$id]);
     if ($ok && function_exists('audit_log')) {
         audit_log('prospection', 'suppression_fiche', 'contact', $id, $contact['nom']);
     }
@@ -351,17 +329,15 @@ function prospection_libelle_priorite(?string $priorite): string {
     };
 }
 
-function modifier_priorite_contact_prospection($conn, int $id, string $priorite): bool {
-    $stmt = mysqli_prepare($conn, "UPDATE prospection_contacts SET priorite = ? WHERE id = ?");
-    mysqli_stmt_bind_param($stmt, 'si', $priorite, $id);
-    return mysqli_stmt_execute($stmt);
+function modifier_priorite_contact_prospection(PDO $pdo, int $id, string $priorite): bool {
+    $stmt = $pdo->prepare("UPDATE prospection_contacts SET priorite = ? WHERE id = ?");
+    return $stmt->execute([$priorite, $id]);
 }
 
-function modifier_statut_contact_prospection($conn, int $id, string $statut): bool {
+function modifier_statut_contact_prospection(PDO $pdo, int $id, string $statut): bool {
     if (!array_key_exists($statut, PROSPECTION_STATUTS)) return false;
-    $stmt = mysqli_prepare($conn, "UPDATE prospection_contacts SET statut = ? WHERE id = ?");
-    mysqli_stmt_bind_param($stmt, 'si', $statut, $id);
-    return mysqli_stmt_execute($stmt);
+    $stmt = $pdo->prepare("UPDATE prospection_contacts SET statut = ? WHERE id = ?");
+    return $stmt->execute([$statut, $id]);
 }
 
 /**
@@ -371,16 +347,16 @@ function modifier_statut_contact_prospection($conn, int $id, string $statut): bo
  * une par une) et ajoute une entrée de synthèse dans le journal d'audit.
  * Retourne ['ok' => nb réussies, 'fail' => nb échouées].
  */
-function prospection_action_masse($conn, string $action, array $ids, array $options = []): array {
+function prospection_action_masse(PDO $pdo, string $action, array $ids, array $options = []): array {
     $ids = array_values(array_unique(array_filter(array_map('intval', $ids), fn($id) => $id > 0)));
     $ok = 0; $fail = 0;
 
     foreach ($ids as $id) {
         $success = match ($action) {
-            'desactiver' => desactiver_contact_prospection($conn, $id),
-            'supprimer'  => supprimer_contact_prospection($conn, $id),
-            'priorite'   => modifier_priorite_contact_prospection($conn, $id, (string)($options['priorite'] ?? '')),
-            'statut'     => modifier_statut_contact_prospection($conn, $id, (string)($options['statut'] ?? '')),
+            'desactiver' => desactiver_contact_prospection($pdo, $id),
+            'supprimer'  => supprimer_contact_prospection($pdo, $id),
+            'priorite'   => modifier_priorite_contact_prospection($pdo, $id, (string)($options['priorite'] ?? '')),
+            'statut'     => modifier_statut_contact_prospection($pdo, $id, (string)($options['statut'] ?? '')),
             default      => false,
         };
         if ($success) $ok++; else $fail++;
@@ -403,22 +379,21 @@ function prospection_action_masse($conn, string $action, array $ids, array $opti
  * Y-m-d, ou du texte brut (on tente alors d'en extraire une date, sinon on
  * date l'entrée du jour et on garde le texte original dans le commentaire).
  */
-function ajouter_suivi_prospection($conn, int $contactId, string $type, string $rawValue, ?string $auteur = null): bool {
+function ajouter_suivi_prospection(PDO $pdo, int $contactId, string $type, string $rawValue, ?string $auteur = null): bool {
     $rawValue = trim($rawValue);
     if ($rawValue === '') return false;
 
     $date = prospection_extraire_date($rawValue) ?? date('Y-m-d');
     $annee = (int)date('Y', strtotime($date));
 
-    $stmt = mysqli_prepare($conn, "
+    $stmt = $pdo->prepare("
         INSERT INTO prospection_suivi (contact_id, type, date_suivi, annee, auteur, commentaire)
         VALUES (?, ?, ?, ?, ?, ?)
     ");
-    mysqli_stmt_bind_param($stmt, 'ississ', $contactId, $type, $date, $annee, $auteur, $rawValue);
-    $ok = mysqli_stmt_execute($stmt);
+    $ok = $stmt->execute([$contactId, $type, $date, $annee, $auteur, $rawValue]);
 
     if ($ok) {
-        mettre_a_jour_statut_auto_prospection($conn, $contactId);
+        mettre_a_jour_statut_auto_prospection($pdo, $contactId);
         if (function_exists('audit_log')) {
             audit_log('prospection', 'ajout_suivi', 'contact', $contactId, null, ['type' => $type, 'date' => $date]);
         }
@@ -431,21 +406,19 @@ function ajouter_suivi_prospection($conn, int $contactId, string $type, string $
  * que l'entrée appartient bien à cette fiche avant de la supprimer (évite
  * qu'un id bricolé dans le formulaire touche une autre fiche).
  */
-function supprimer_suivi_prospection($conn, int $suiviId, ?int $contactIdAttendu = null): bool {
+function supprimer_suivi_prospection(PDO $pdo, int $suiviId, ?int $contactIdAttendu = null): bool {
     $sql = "SELECT contact_id, type, date_suivi FROM prospection_suivi WHERE id = ?";
-    $stmt = mysqli_prepare($conn, $sql);
-    mysqli_stmt_bind_param($stmt, 'i', $suiviId);
-    mysqli_stmt_execute($stmt);
-    $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$suiviId]);
+    $row = $stmt->fetch();
     if (!$row) return false;
     if ($contactIdAttendu !== null && (int)$row['contact_id'] !== $contactIdAttendu) return false;
 
-    $del = mysqli_prepare($conn, "DELETE FROM prospection_suivi WHERE id = ?");
-    mysqli_stmt_bind_param($del, 'i', $suiviId);
-    $ok = mysqli_stmt_execute($del);
+    $del = $pdo->prepare("DELETE FROM prospection_suivi WHERE id = ?");
+    $ok = $del->execute([$suiviId]);
 
     if ($ok) {
-        mettre_a_jour_statut_auto_prospection($conn, (int)$row['contact_id']);
+        mettre_a_jour_statut_auto_prospection($pdo, (int)$row['contact_id']);
         if (function_exists('audit_log')) {
             audit_log('prospection', 'suppression_suivi', 'contact', (int)$row['contact_id'], null,
                 ['type' => $row['type'], 'date' => $row['date_suivi']]);
@@ -469,29 +442,27 @@ function supprimer_suivi_prospection($conn, int $suiviId, ?int $contactIdAttendu
  */
 const PROSPECTION_SUIVI_MARQUEUR_RAPIDE = '(Marqué contactée — sans détail)';
 
-function prospection_marquer_annee_contact($conn, int $contactId, int $annee, bool $contacte, ?string $auteur = null): bool {
+function prospection_marquer_annee_contact(PDO $pdo, int $contactId, int $annee, bool $contacte, ?string $auteur = null): bool {
     if ($contacte) {
-        $stmt = mysqli_prepare($conn, "
+        $stmt = $pdo->prepare("
             SELECT COUNT(*) AS n FROM prospection_suivi
             WHERE contact_id = ? AND type = 'contact' AND annee = ?
         ");
-        mysqli_stmt_bind_param($stmt, 'ii', $contactId, $annee);
-        mysqli_stmt_execute($stmt);
-        $existe = (int)(mysqli_fetch_assoc(mysqli_stmt_get_result($stmt))['n'] ?? 0) > 0;
+        $stmt->execute([$contactId, $annee]);
+        $existe = (int)($stmt->fetch()['n'] ?? 0) > 0;
         if ($existe) return true; // déjà marquée contactée, rien à faire
 
         $anneeCourante = (int)date('Y');
         $date = $annee === $anneeCourante ? date('Y-m-d') : sprintf('%04d-12-31', $annee);
 
-        $ins = mysqli_prepare($conn, "
+        $ins = $pdo->prepare("
             INSERT INTO prospection_suivi (contact_id, type, date_suivi, annee, auteur, commentaire)
             VALUES (?, 'contact', ?, ?, ?, ?)
         ");
         $commentaire = PROSPECTION_SUIVI_MARQUEUR_RAPIDE;
-        mysqli_stmt_bind_param($ins, 'isiss', $contactId, $date, $annee, $auteur, $commentaire);
-        $ok = mysqli_stmt_execute($ins);
+        $ok = $ins->execute([$contactId, $date, $annee, $auteur, $commentaire]);
         if ($ok) {
-            mettre_a_jour_statut_auto_prospection($conn, $contactId);
+            mettre_a_jour_statut_auto_prospection($pdo, $contactId);
             if (function_exists('audit_log')) {
                 audit_log('prospection', 'marquage_annee_contactee', 'contact', $contactId, null, ['annee' => $annee]);
             }
@@ -500,15 +471,14 @@ function prospection_marquer_annee_contact($conn, int $contactId, int $annee, bo
     }
 
     // Démarquer : ne retire que les entrées ajoutées par ce marqueur rapide.
-    $del = mysqli_prepare($conn, "
+    $del = $pdo->prepare("
         DELETE FROM prospection_suivi
         WHERE contact_id = ? AND type = 'contact' AND annee = ? AND commentaire = ?
     ");
     $commentaire = PROSPECTION_SUIVI_MARQUEUR_RAPIDE;
-    mysqli_stmt_bind_param($del, 'iis', $contactId, $annee, $commentaire);
-    $ok = mysqli_stmt_execute($del);
+    $ok = $del->execute([$contactId, $annee, $commentaire]);
     if ($ok) {
-        mettre_a_jour_statut_auto_prospection($conn, $contactId);
+        mettre_a_jour_statut_auto_prospection($pdo, $contactId);
         if (function_exists('audit_log')) {
             audit_log('prospection', 'demarquage_annee_contactee', 'contact', $contactId, null, ['annee' => $annee]);
         }
@@ -592,18 +562,16 @@ function prospection_extraire_date(string $text): ?string {
  * Historique groupé par année (le plus récent en premier), pour l'affichage
  * "Année N, N-1, ..." demandé sur la fiche.
  */
-function get_historique_suivi_prospection($conn, int $contactId): array {
-    $stmt = mysqli_prepare($conn, "
+function get_historique_suivi_prospection(PDO $pdo, int $contactId): array {
+    $stmt = $pdo->prepare("
         SELECT * FROM prospection_suivi
         WHERE contact_id = ?
         ORDER BY date_suivi DESC, id DESC
     ");
-    mysqli_stmt_bind_param($stmt, 'i', $contactId);
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
+    $stmt->execute([$contactId]);
 
     $parAnnee = [];
-    while ($row = mysqli_fetch_assoc($result)) {
+    foreach ($stmt->fetchAll() as $row) {
         $parAnnee[(int)$row['annee']][] = $row;
     }
     krsort($parAnnee);
@@ -648,15 +616,16 @@ function prospection_resume_annees_contact(array $historiqueParAnnee, ?array $an
  * Déduit un statut "à jour" à partir de la dernière entrée de suivi.
  * N'écrase jamais un statut manuel accorde/refuse.
  */
-function mettre_a_jour_statut_auto_prospection($conn, int $contactId): void {
-    $current = mysqli_fetch_assoc(mysqli_query($conn, "SELECT statut FROM prospection_contacts WHERE id = " . (int)$contactId));
+function mettre_a_jour_statut_auto_prospection(PDO $pdo, int $contactId): void {
+    $stmt = $pdo->prepare("SELECT statut FROM prospection_contacts WHERE id = ?");
+    $stmt->execute([$contactId]);
+    $current = $stmt->fetch();
     if (!$current) return;
     if (in_array($current['statut'], ['accorde', 'refuse'], true)) return; // décisions manuelles, on ne touche pas
 
-    $stmt = mysqli_prepare($conn, "SELECT type FROM prospection_suivi WHERE contact_id = ? ORDER BY date_suivi DESC, id DESC LIMIT 1");
-    mysqli_stmt_bind_param($stmt, 'i', $contactId);
-    mysqli_stmt_execute($stmt);
-    $last = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+    $stmt = $pdo->prepare("SELECT type FROM prospection_suivi WHERE contact_id = ? ORDER BY date_suivi DESC, id DESC LIMIT 1");
+    $stmt->execute([$contactId]);
+    $last = $stmt->fetch();
     if (!$last) return;
 
     $nouveauStatut = match ($last['type']) {
@@ -665,9 +634,8 @@ function mettre_a_jour_statut_auto_prospection($conn, int $contactId): void {
         default   => $current['statut'],
     };
     if ($nouveauStatut !== $current['statut']) {
-        $upd = mysqli_prepare($conn, "UPDATE prospection_contacts SET statut = ? WHERE id = ?");
-        mysqli_stmt_bind_param($upd, 'si', $nouveauStatut, $contactId);
-        mysqli_stmt_execute($upd);
+        $upd = $pdo->prepare("UPDATE prospection_contacts SET statut = ? WHERE id = ?");
+        $upd->execute([$nouveauStatut, $contactId]);
     }
 }
 
@@ -769,7 +737,7 @@ function prospection_import_mappage_suggere(array $headers, ?array $profile): ar
  * Toute colonne non consommée (cible 'ignorer' ou non mappée) part dans
  * extra_json — rien n'est perdu. Retourne l'id créé, ou 0 si ignorée (pas de nom).
  */
-function prospection_import_appliquer_ligne_mapping($conn, int $categorieId, array $mapping, array $row): int {
+function prospection_import_appliquer_ligne_mapping(PDO $pdo, int $categorieId, array $mapping, array $row): int {
     $data = [];
     $signaux = ['signal_contact' => [], 'signal_rappel' => [], 'signal_note' => []];
     $consumed = [];
@@ -795,13 +763,13 @@ function prospection_import_appliquer_ligne_mapping($conn, int $categorieId, arr
         if (trim((string)$val) !== '') $extra[$col] = $val;
     }
 
-    $contactId = creer_contact_prospection($conn, $categorieId, $data, $extra);
+    $contactId = creer_contact_prospection($pdo, $categorieId, $data, $extra);
     if (!$contactId) return 0;
 
     $auteur = 'Import CSV';
-    foreach ($signaux['signal_contact'] as $val) ajouter_suivi_prospection($conn, $contactId, 'contact', $val, $auteur);
-    foreach ($signaux['signal_rappel']  as $val) ajouter_suivi_prospection($conn, $contactId, 'rappel',  $val, $auteur);
-    foreach ($signaux['signal_note']   as $val) ajouter_suivi_prospection($conn, $contactId, 'note',    $val, $auteur);
+    foreach ($signaux['signal_contact'] as $val) ajouter_suivi_prospection($pdo, $contactId, 'contact', $val, $auteur);
+    foreach ($signaux['signal_rappel']  as $val) ajouter_suivi_prospection($pdo, $contactId, 'rappel',  $val, $auteur);
+    foreach ($signaux['signal_note']   as $val) ajouter_suivi_prospection($pdo, $contactId, 'note',    $val, $auteur);
 
     return $contactId;
 }
@@ -844,7 +812,7 @@ function prospection_trouver_colonne(array $row, string $wantedHeader): ?string 
     return null;
 }
 
-function prospection_import_appliquer_ligne($conn, int $categorieId, array $profile, array $row): int {
+function prospection_import_appliquer_ligne(PDO $pdo, int $categorieId, array $profile, array $row): int {
     $data = [];
     $consumed = [];
     foreach ($profile['fields'] as $srcCol => $target) {
@@ -880,21 +848,21 @@ function prospection_import_appliquer_ligne($conn, int $categorieId, array $prof
         if (trim((string)$val) !== '') $extra[$col] = $val;
     }
 
-    $contactId = creer_contact_prospection($conn, $categorieId, $data, $extra);
+    $contactId = creer_contact_prospection($pdo, $categorieId, $data, $extra);
     if (!$contactId) return 0;
 
     $auteur = 'Import CSV';
     foreach (($profile['contact_signal_cols'] ?? []) as $declared) {
         $real = $resolve($declared);
-        if ($real !== null && !empty($row[$real])) ajouter_suivi_prospection($conn, $contactId, 'contact', (string)$row[$real], $auteur);
+        if ($real !== null && !empty($row[$real])) ajouter_suivi_prospection($pdo, $contactId, 'contact', (string)$row[$real], $auteur);
     }
     foreach (($profile['rappel_signal_cols'] ?? []) as $declared) {
         $real = $resolve($declared);
-        if ($real !== null && !empty($row[$real])) ajouter_suivi_prospection($conn, $contactId, 'rappel', (string)$row[$real], $auteur);
+        if ($real !== null && !empty($row[$real])) ajouter_suivi_prospection($pdo, $contactId, 'rappel', (string)$row[$real], $auteur);
     }
     foreach (($profile['note_signal_cols'] ?? []) as $declared) {
         $real = $resolve($declared);
-        if ($real !== null && !empty($row[$real])) ajouter_suivi_prospection($conn, $contactId, 'note', (string)$row[$real], $auteur);
+        if ($real !== null && !empty($row[$real])) ajouter_suivi_prospection($pdo, $contactId, 'note', (string)$row[$real], $auteur);
     }
     if (!empty($profile['date_contact_col']) || !empty($profile['mode_contact_col'])) {
         $realDate = $resolve($profile['date_contact_col'] ?? null);
@@ -903,7 +871,7 @@ function prospection_import_appliquer_ligne($conn, int $categorieId, array $prof
         $m = trim((string)($realMode !== null ? ($row[$realMode] ?? '') : ''));
         if ($d !== '' || $m !== '') {
             $note = trim($m . ($d !== '' ? ' — ' . $d : ''));
-            ajouter_suivi_prospection($conn, $contactId, 'contact', $note, $auteur);
+            ajouter_suivi_prospection($pdo, $contactId, 'contact', $note, $auteur);
         }
     }
 

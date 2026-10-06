@@ -10,7 +10,8 @@
 require_once __DIR__ . '/../shared/bootstrap.php';
 require_admin(); // l'accès au module est contrôlé par shared/bootstrap.php (droits par module)
 
-require_once __DIR__ . '/../config_db.php';
+require_once __DIR__ . '/../shared/db.php';
+$pdo = suite_pdo();
 require_once 'functions_prospection.php';
 require_once 'import_profiles.php';
 
@@ -99,7 +100,7 @@ function prospection_lire_csv(string $path): array {
     return ['headers' => $headers, 'rows' => $rows];
 }
 
-$categories = get_categories_prospection($conn);
+$categories = get_categories_prospection($pdo);
 $error = '';
 $resultat = null;
 $etape = 'upload'; // upload | mappage
@@ -170,7 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['step'] ?? '') === 'confirm
         } else {
             $nbCrees = 0; $nbIgnores = 0;
             foreach ($pending['rows'] as $row) {
-                $id = prospection_import_appliquer_ligne_mapping($conn, $categorieId, $mapping, $row);
+                $id = prospection_import_appliquer_ligne_mapping($pdo, $categorieId, $mapping, $row);
                 if ($id) $nbCrees++; else $nbIgnores++;
             }
 
