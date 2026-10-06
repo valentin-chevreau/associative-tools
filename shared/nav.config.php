@@ -102,15 +102,6 @@ if (!function_exists('nav_items')) {
     add_if_exists($convoisChildren, 'Étiquettes', $root . '/logistique/labels/index.php',  $base . '/logistique/labels/index.php');
 
     // ======================
-    // Stock local (logistique/stock)
-    // ======================
-    $stockChildren = [];
-    add_if_exists($stockChildren, 'Objets en stock', $root . '/logistique/stock/index.php', $base . '/logistique/stock/index.php');
-    add_if_exists($stockChildren, 'Ajouter un objet', $root . '/logistique/stock/item_edit.php', $base . '/logistique/stock/item_edit.php', 'admin', 'Admin');
-    add_if_exists($stockChildren, 'Catégories', $root . '/logistique/stock/categories/index.php', $base . '/logistique/stock/categories/index.php');
-    add_if_exists($stockChildren, 'Lieux',      $root . '/logistique/stock/locations/index.php',  $base . '/logistique/stock/locations/index.php');
-
-    // ======================
     // Étiquettes (module global éventuel)
     // ======================
     $etiquettesHref = null;
@@ -210,14 +201,6 @@ if (!function_exists('nav_items')) {
       'module' => 'logistique', 'group' => 'terrain',
       'min_role' => 'public',
       'children' => $convoisChildren,
-    ];
-
-    $items[] = [
-      'label' => 'Stock local',
-      'icon'  => 'box',
-      'module' => 'logistique', 'group' => 'terrain',
-      'min_role' => 'public',
-      'children' => $stockChildren,
     ];
 
     if ($etiquettesHref !== null) {

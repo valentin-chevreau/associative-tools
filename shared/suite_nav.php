@@ -162,14 +162,6 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
          class="tu-sb-item <?= _nav_active('logistique-categories', $activeItem, $activeModule, 'logistique') ?>">
         Catégories
       </a>
-      <a href="<?= h2($base . '/logistique/stock/index.php') ?>"
-         class="tu-sb-item <?= _nav_active('logistique-stock', $activeItem, $activeModule, 'logistique') ?>">
-        Stock local
-      </a>
-      <a href="<?= h2($base . '/logistique/stock/categories/index.php') ?>"
-         class="tu-sb-item <?= _nav_active('logistique-stock-categories', $activeItem, $activeModule, 'logistique') ?>">
-        Catégories stock
-      </a>
       <a href="<?= h2($base . '/logistique/families/index.php') ?>"
          class="tu-sb-item <?= _nav_active('logistique-families', $activeItem, $activeModule, 'logistique') ?>">
         Familles
