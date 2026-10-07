@@ -47,35 +47,34 @@ Ouvre `/opt/touraine-ukraine-deploy/deploy-prod.sh` et vérifie/adapte :
 - `PHP_FPM_SERVICE` — le nom exact du service PHP-FPM (`systemctl status
   'php*-fpm'` pour le trouver si besoin)
 
-## 4. Créer le fichier d'identifiants MySQL (pour la sauvegarde avant déploiement)
+## 4. Identifiants MySQL pour la sauvegarde avant déploiement
 
-Ce fichier **ne doit jamais être commité** — il vit uniquement sur le VPS :
+Le script ne possède plus de fichier d'identifiants propre : il lit `DB_HOST`,
+`DB_NAME`, `DB_USER` et `DB_PASS` dans le fichier d'environnement de l'application,
+`/var/www/html/touraine-ukraine.fr/secrets/tools.env`. Une rotation du mot de
+passe n'a donc qu'un seul endroit à modifier.
+
+Ce fichier est en `root:www-data` `640` : l'utilisateur du runner (`vchevreau`)
+doit appartenir au groupe `www-data` pour le lire.
 
 ```bash
-sudo tee /etc/touraine-ukraine-deploy.env > /dev/null <<'EOF'
-DB_HOST=localhost
-DB_NAME=touraineukraine_tools
-DB_USER=...
-DB_PASS=...
-EOF
-sudo chmod 600 /etc/touraine-ukraine-deploy.env
+sudo usermod -aG www-data vchevreau
+sudo systemctl restart "actions.runner.*"   # le service doit être relancé pour prendre le groupe
 ```
 
-Sans ce fichier, le script continue de fonctionner mais saute la sauvegarde
-(avec un message d'avertissement dans les logs).
+Si la sauvegarde échoue (fichier illisible, mot de passe refusé), le déploiement
+est abandonné avant toute modification du code.
 
 ## 5. Autoriser le rechargement de PHP-FPM sans mot de passe
 
-Le compte qui exécute le runner (souvent un utilisateur dédié, ex.
-`github-runner`) a besoin de recharger PHP-FPM sans interaction :
+Le compte qui exécute le runner a besoin de recharger PHP-FPM sans
+interaction. Sur ce VPS, le runner tourne sous l'utilisateur `vchevreau` et
+le site utilise `php8.3-fpm` (identifiés via `/etc/nginx/sites-available/touraine-ukraine.fr` → `fastcgi_pass unix:/run/php/php8.3-fpm.sock;`) :
 
 ```bash
-echo 'github-runner ALL=(ALL) NOPASSWD: /bin/systemctl reload php8.2-fpm' | sudo tee /etc/sudoers.d/touraine-ukraine-deploy
+echo 'vchevreau ALL=(ALL) NOPASSWD: /bin/systemctl reload php8.3-fpm' | sudo tee /etc/sudoers.d/touraine-ukraine-deploy
 sudo chmod 440 /etc/sudoers.d/touraine-ukraine-deploy
 ```
-
-(remplace `github-runner` par l'utilisateur réel sous lequel tourne le
-service du runner, et `php8.2-fpm` par la valeur de `PHP_FPM_SERVICE`.)
 
 ## 6. Vérifier les droits d'écriture
 

@@ -20,34 +20,44 @@ set -euo pipefail
 
 # ---- Configuration -------------------------------------------------------
 PROD_DIR="/var/www/html/touraine-ukraine.fr/public/tools"
-BACKUP_DIR="/var/backups/touraine-ukraine-tools"
+BACKUP_DIR="/opt/touraine-ukraine-deploy/backups"
 KEEP_BACKUPS=10
-# Fichier NON versionné contenant les identifiants MySQL de prod, format :
-#   DB_HOST=localhost
-#   DB_NAME=touraineukraine_tools
-#   DB_USER=...
-#   DB_PASS=...
-ENV_FILE="/etc/touraine-ukraine-deploy.env"
+# Fichier d'environnement unique de la prod (celui lu par l'application) :
+# les identifiants DB_* y sont déjà, on ne les duplique pas ailleurs.
+# L'utilisateur du runner doit pouvoir le lire (groupe www-data, voir README).
+ENV_FILE="/var/www/html/touraine-ukraine.fr/secrets/tools.env"
 # Nom du service PHP-FPM à recharger après déploiement (évite tout souci de
 # cache OPcache servant encore l'ancien code) — adapte à ta version PHP.
-PHP_FPM_SERVICE="php8.2-fpm"
+PHP_FPM_SERVICE="php8.3-fpm"
 
 log() { echo "[deploy $(date '+%Y-%m-%d %H:%M:%S')] $*"; }
 
 # ---- 1) Sauvegarde de la base avant toute modification --------------------
+[ -r "$ENV_FILE" ] || { echo "ERREUR : $ENV_FILE illisible pour $(id -un) (voir deploy/README.md)" >&2; exit 1; }
+
+# Lecture d'une clé du fichier .env (sans l'exécuter ni exposer le mot de passe).
+env_get() {
+    local v
+    v=$(grep -E "^$1=" "$ENV_FILE" | tail -n1 | cut -d= -f2-)
+    v="${v%\"}"; v="${v#\"}"; v="${v%\'}"; v="${v#\'}"
+    printf '%s' "$v"
+}
+DB_HOST=$(env_get DB_HOST); DB_NAME=$(env_get DB_NAME)
+DB_USER=$(env_get DB_USER); DB_PASS=$(env_get DB_PASS)
+: "${DB_HOST:?DB_HOST manquant dans $ENV_FILE}" "${DB_NAME:?DB_NAME manquant}" \
+  "${DB_USER:?DB_USER manquant}" "${DB_PASS:?DB_PASS manquant}"
+
 mkdir -p "$BACKUP_DIR"
-if [ -f "$ENV_FILE" ]; then
-    # shellcheck disable=SC1090
-    source "$ENV_FILE"
-    timestamp=$(date +%Y%m%d-%H%M%S)
-    backup_file="$BACKUP_DIR/${DB_NAME}-${timestamp}.sql.gz"
-    log "Sauvegarde de la base $DB_NAME vers $backup_file"
-    MYSQL_PWD="$DB_PASS" mysqldump -h "$DB_HOST" -u "$DB_USER" "$DB_NAME" | gzip > "$backup_file"
-    # Ne garde que les KEEP_BACKUPS sauvegardes les plus récentes.
-    ls -1t "$BACKUP_DIR"/*.sql.gz 2>/dev/null | tail -n +$((KEEP_BACKUPS + 1)) | xargs -r rm --
-else
-    log "ATTENTION : $ENV_FILE introuvable — sauvegarde DB ignorée (voir deploy/README.md pour l'activer)"
+timestamp=$(date +%Y%m%d-%H%M%S)
+backup_file="$BACKUP_DIR/${DB_NAME}-${timestamp}.sql.gz"
+log "Sauvegarde de la base $DB_NAME vers $backup_file"
+if ! MYSQL_PWD="$DB_PASS" mysqldump -h "$DB_HOST" -u "$DB_USER" "$DB_NAME" | gzip > "$backup_file"; then
+    rm -f "$backup_file"
+    log "ERREUR : sauvegarde de la base impossible — déploiement ABANDONNÉ"
+    exit 2
 fi
+# Ne garde que les KEEP_BACKUPS sauvegardes les plus récentes.
+ls -1t "$BACKUP_DIR"/*.sql.gz 2>/dev/null | tail -n +$((KEEP_BACKUPS + 1)) | xargs -r rm --
 
 # ---- 2) Récupération du code ----------------------------------------------
 cd "$PROD_DIR"
