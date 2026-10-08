@@ -488,6 +488,50 @@ body.tu-v2 *, body.tu-v2 *::before, body.tu-v2 *::after {
 }
 
 /* ═══════════════════════════════════════
+   LISTE DÉROULANTE (assets/js/tu_select.js)
+═══════════════════════════════════════ */
+.tu-select-wrap { position: relative; }
+.tu-select-wrap select.tu-select-native {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0; pointer-events: none;
+}
+.tu-select-trigger {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  cursor: pointer; user-select: none;
+}
+.tu-select-trigger .tu-select-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tu-select-trigger .tu-select-label.placeholder { color: var(--tu-ink-300); }
+.tu-select-trigger.disabled { opacity: .55; cursor: not-allowed; }
+.tu-select-trigger .tu-select-chevron { flex-shrink: 0; color: var(--tu-ink-300); transition: transform .15s; }
+.tu-select-wrap.open .tu-select-trigger { border-color: var(--tu-amber-300); }
+.tu-select-wrap.open .tu-select-trigger .tu-select-chevron { transform: rotate(180deg); }
+.tu-select-panel {
+  display: none; position: fixed; z-index: 2100;
+  background: #fff; border: 1.5px solid var(--tu-ink-100); border-radius: var(--tu-r-sm);
+  box-shadow: var(--tu-shadow-lg); padding: 4px;
+}
+.tu-select-panel.open { display: block; }
+.tu-select-list { overflow-y: auto; }
+.tu-select-search {
+  width: 100%; margin-bottom: 4px; padding: 8px 10px; font: inherit; font-size: 13px;
+  border: 1.5px solid var(--tu-ink-100); border-radius: 6px; background: var(--tu-white);
+  color: var(--tu-ink-900); outline: none;
+}
+.tu-select-search:focus { border-color: var(--tu-amber-400); box-shadow: 0 0 0 3px rgba(232,146,74,.14); }
+.tu-select-opt {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 9px 12px; font-size: 13px; font-weight: 500; color: var(--tu-ink-900);
+  border-radius: 6px; cursor: pointer;
+}
+.tu-select-opt[hidden] { display: none; }
+.tu-select-opt:hover, .tu-select-opt.focused { background: var(--tu-sand-50); }
+.tu-select-opt.selected { color: var(--tu-amber-600); font-weight: 700; }
+.tu-select-opt.is-disabled { color: var(--tu-ink-200); cursor: default; }
+.tu-select-opt .tu-select-check { color: var(--tu-amber-600); font-weight: 800; visibility: hidden; }
+.tu-select-opt.selected .tu-select-check { visibility: visible; }
+.tu-select-empty { padding: 12px; text-align: center; font-size: 12.5px; color: var(--tu-ink-300); }
+
+/* ═══════════════════════════════════════
    SÉLECTEUR DE DATE (assets/js/tu_datepicker.js)
 ═══════════════════════════════════════ */
 .tu-dp-display { cursor: pointer; }

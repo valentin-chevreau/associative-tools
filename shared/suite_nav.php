@@ -505,6 +505,7 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
   });
 })();
 </script>
+<script src="<?= htmlspecialchars($base, ENT_QUOTES, 'UTF-8') ?>/assets/js/tu_select.js?v=<?= (int)@filemtime(dirname(__DIR__) . '/assets/js/tu_select.js') ?>" defer></script>
 <?php
 } // end suite_nav_render
 
