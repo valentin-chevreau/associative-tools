@@ -1244,14 +1244,22 @@ body.tu-sb-open .tu-hamburger {
   }
 }
 
-/* Bouton à 3 états (hérité / autorisé / refusé) — assets/js/tu_select.js n'est pas requis */
-.tu-tri { display: inline-flex; background: var(--tu-sand-100); border-radius: 999px; padding: 3px; gap: 2px; }
-.tu-tri button {
-  border: 0; background: none; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--tu-ink-300);
-  padding: 5px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap;
-}
-.tu-tri button:hover { color: var(--tu-ink-900, #1a1510); }
-.tu-tri button.on { background: #fff; color: var(--tu-ink-900, #1a1510); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
-.tu-tri button.on.allow { background: var(--tu-green-main); color: #fff; }
-.tu-tri button.on.deny { background: var(--tu-red-main); color: #fff; }
-@media (max-width: 640px) { .tu-tri { display: flex; width: 100%; } .tu-tri button { flex: 1; padding: 7px 4px; } }
+/* Liste de choix à ✓ : <label class="tu-row"><input type="checkbox"><span class="tu-row-ck">✓</span><span class="tu-row-t"><b>Titre</b><small>Détail</small></span></label> */
+.tu-row { display: flex; align-items: center; gap: 14px; padding: 11px 18px; border-top: 1px solid var(--tu-ink-100); cursor: pointer; transition: background-color .1s; }
+.tu-row:hover { background: var(--tu-sand-50); }
+.tu-row input { position: absolute; opacity: 0; width: 0; height: 0; }
+.tu-row-ck { width: 20px; flex-shrink: 0; text-align: center; font-weight: 800; font-size: 15px; color: transparent; }
+.tu-row input:checked ~ .tu-row-ck { color: var(--tu-amber-600); }
+.tu-row input:focus-visible ~ .tu-row-ck { outline: 2px solid var(--tu-amber-600); border-radius: 4px; }
+.tu-row-t { flex: 1; min-width: 0; }
+.tu-row-t b { display: block; font-size: 14px; font-weight: 600; color: var(--tu-ink-300); }
+.tu-row input:checked ~ .tu-row-t b { color: var(--tu-ink-900); font-weight: 700; }
+.tu-row-t small { font-size: 11.5px; color: var(--tu-ink-300); }
+.tu-row-tag { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+.tu-row-tag.add { background: var(--tu-green-soft); color: var(--tu-green-main); }
+.tu-row-tag.del { background: var(--tu-red-soft); color: var(--tu-red-main); }
+.tu-row-tag[hidden], .tu-row-reset[hidden] { display: none; }
+.tu-row-reset { border: 0; background: none; font: inherit; font-size: 11.5px; color: var(--tu-amber-600); cursor: pointer; padding: 0; }
+.tu-seg { display: inline-flex; background: var(--tu-sand-100); border-radius: 999px; padding: 3px; gap: 2px; }
+.tu-seg button { border: 0; background: none; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--tu-ink-300); padding: 5px 14px; border-radius: 999px; cursor: pointer; }
+.tu-seg button.on { background: #fff; color: var(--tu-ink-900); box-shadow: 0 1px 3px rgba(0,0,0,.15); }

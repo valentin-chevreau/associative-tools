@@ -161,17 +161,10 @@ $pageTitle = 'Droits d\'accès — Touraine-Ukraine';
       @media (max-width: 900px) {
         body.tu-v2 .tu-main { margin-left: 0; padding: 16px; padding-top: 70px; }
       }
-      .perm-tbl td, .perm-tbl th { text-align: center; }
-      .perm-tbl td:first-child, .perm-tbl th:first-child { text-align: left; }
-      .perm-tbl input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--tu-amber-500); cursor: pointer; }
-      .perm-locked { color: var(--tu-ink-300); font-size: 12px; }
-      .perm-eff { font-size: 11.5px; color: var(--tu-ink-300); }
-      @media (max-width: 640px) {
-        .tu-tbl.perm-user, .perm-user thead, .perm-user tbody, .perm-user tr, .perm-user td { display: block; }
-        .perm-user thead { display: none; }
-        .perm-user tr { padding: 10px 14px; border-top: 1px solid var(--tu-ink-100); }
-        .perm-user td { border: 0; padding: 2px 0; }
-      }
+      .perm-head { padding: 14px 18px; border-bottom: 1px solid var(--tu-ink-100); }
+      .perm-foot { padding: 14px 18px; border-top: 1px solid var(--tu-ink-100); display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+      .perm-foot span { font-size: 12px; color: var(--tu-ink-300); }
+      .perm-panel[hidden] { display: none; }
     </style>
 </head>
 <body class="tu-v2">
@@ -230,29 +223,26 @@ suite_nav_render('users', '');
       <div style="font-family:var(--tu-font-d);font-size:14px;font-weight:700;">Accès par rôle</div>
       <div style="font-size:12px;color:var(--tu-ink-300);margin-top:2px;">Valeur par défaut pour tous les utilisateurs d'un rôle. Le super admin a toujours accès à tout.</div>
     </div>
-    <form method="post">
+    <form method="post" id="roleForm">
       <input type="hidden" name="action" value="save_roles">
-      <table class="tu-tbl perm-tbl">
-        <thead>
-          <tr>
-            <th>Module</th>
-            <?php foreach ($editableRoles as $rl): ?><th><?= h($rl) ?></th><?php endforeach; ?>
-            <th>Super admin</th>
-          </tr>
-        </thead>
-        <tbody>
+      <div class="tu-seg" id="roleSeg" style="margin:12px 18px 8px;">
+        <?php $first = true; foreach ($editableRoles as $role => $rl): ?>
+          <button type="button" data-role="<?= h($role) ?>" class="<?= $first ? 'on' : '' ?>"><?= h($rl) ?></button>
+        <?php $first = false; endforeach; ?>
+      </div>
+      <?php $first = true; foreach ($editableRoles as $role => $rl): ?>
+        <div class="perm-panel" data-role="<?= h($role) ?>" <?= $first ? '' : 'hidden' ?>>
           <?php foreach ($modules as $key => $label): ?>
-            <tr>
-              <td style="font-weight:600;"><?= h($label) ?></td>
-              <?php foreach ($editableRoles as $role => $rl): ?>
-                <td><input type="checkbox" name="perm[<?= h($role) ?>][<?= h($key) ?>]" value="1" <?= roleAllowed($perm, $role, $key) ? 'checked' : '' ?>></td>
-              <?php endforeach; ?>
-              <td class="perm-locked">toujours</td>
-            </tr>
+            <label class="tu-row">
+              <input type="checkbox" name="perm[<?= h($role) ?>][<?= h($key) ?>]" value="1" <?= roleAllowed($perm, $role, $key) ? 'checked' : '' ?>>
+              <span class="tu-row-ck">✓</span>
+              <span class="tu-row-t"><b><?= h($label) ?></b><small><?= h($key) ?></small></span>
+            </label>
           <?php endforeach; ?>
-        </tbody>
-      </table>
-      <div style="padding:14px 18px;border-top:1px solid var(--tu-ink-100);text-align:right;">
+        </div>
+      <?php $first = false; endforeach; ?>
+      <div class="perm-foot">
+        <span id="roleCount"></span>
         <button type="submit" class="tu-btn tu-btn-p">Enregistrer les droits des rôles</button>
       </div>
     </form>
@@ -289,28 +279,23 @@ suite_nav_render('users', '');
         <?php if ($selRole === 'super_admin'): ?>
           <div style="padding:18px;font-size:13px;color:var(--tu-ink-400);">Un super admin a toujours accès à tout : aucun droit particulier à définir.</div>
         <?php else: ?>
-        <table class="tu-tbl perm-user">
-          <thead><tr><th>Module</th><th>Par défaut du rôle</th><th>Pour cette personne</th></tr></thead>
-          <tbody>
-            <?php foreach ($modules as $key => $label):
-                $roleDefault = roleAllowed($perm, $selRole, $key);
-                $cur = isset($selOv[$key]) ? ($selOv[$key] ? 'allow' : 'deny') : 'inherit'; ?>
-              <tr>
-                <td style="font-weight:600;"><?= h($label) ?></td>
-                <td class="perm-eff"><?= $roleDefault ? '✓ autorisé' : '✗ refusé' ?></td>
-                <td>
-                  <div class="tu-tri" role="group" aria-label="<?= h($label) ?>">
-                    <?php foreach (['inherit' => 'Selon le rôle', 'allow' => 'Autoriser', 'deny' => 'Refuser'] as $val => $txt): ?>
-                      <button type="button" data-v="<?= $val ?>" class="<?= $val ?><?= $cur === $val ? ' on' : '' ?>"><?= h($txt) ?></button>
-                    <?php endforeach; ?>
-                    <input type="hidden" name="user_perm[<?= h($key) ?>]" value="<?= h($cur) ?>">
-                  </div>
-                </td>
-              </tr>
-            <?php endforeach; ?>
-          </tbody>
-        </table>
-        <div style="padding:14px 18px;border-top:1px solid var(--tu-ink-100);text-align:right;">
+        <div id="userRows">
+          <?php foreach ($modules as $key => $label):
+              $roleDefault = roleAllowed($perm, $selRole, $key);
+              $cur = isset($selOv[$key]) ? ($selOv[$key] ? 'allow' : 'deny') : 'inherit';
+              $eff = $cur === 'inherit' ? $roleDefault : ($cur === 'allow'); ?>
+            <label class="tu-row" data-def="<?= $roleDefault ? 1 : 0 ?>">
+              <input type="checkbox" <?= $eff ? 'checked' : '' ?>>
+              <input type="hidden" name="user_perm[<?= h($key) ?>]" value="<?= h($cur) ?>">
+              <span class="tu-row-ck">✓</span>
+              <span class="tu-row-t"><b><?= h($label) ?></b><small><?= h($key) ?> · Par défaut pour <?= h($roleLabels[$selRole] ?? $selRole) ?> : <?= $roleDefault ? 'autorisé' : 'refusé' ?></small></span>
+              <span class="tu-row-tag" hidden></span>
+              <button type="button" class="tu-row-reset" hidden>rétablir</button>
+            </label>
+          <?php endforeach; ?>
+        </div>
+        <div class="perm-foot">
+          <span id="userCount"></span>
           <button type="submit" class="tu-btn tu-btn-p">Enregistrer pour <?= h(trim($selected['first_name'] . ' ' . $selected['last_name'])) ?></button>
         </div>
         <?php endif; ?>
@@ -325,13 +310,56 @@ suite_nav_render('users', '');
 </div>
 </div><!-- /tu-main -->
 <script>
-document.addEventListener('click', function (e) {
-  var b = e.target.closest('.tu-tri button');
-  if (!b) return;
-  var g = b.parentNode;
-  g.querySelectorAll('button').forEach(function (k) { k.classList.toggle('on', k === b); });
-  g.querySelector('input').value = b.dataset.v;
-});
+(function () {
+  /* Accès par rôle : un panneau par rôle, bascule par le sélecteur. */
+  var seg = document.getElementById('roleSeg');
+  function countRole() {
+    var on = seg && seg.querySelector('button.on');
+    if (!on) return;
+    var panel = document.querySelector('.perm-panel[data-role="' + on.dataset.role + '"]');
+    var n = panel.querySelectorAll('input:checked').length, t = panel.querySelectorAll('input').length;
+    document.getElementById('roleCount').textContent = n + ' module' + (n > 1 ? 's' : '') + ' sur ' + t;
+  }
+  if (seg) {
+    seg.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      seg.querySelectorAll('button').forEach(function (k) { k.classList.toggle('on', k === b); });
+      document.querySelectorAll('.perm-panel').forEach(function (p) { p.hidden = p.dataset.role !== b.dataset.role; });
+      countRole();
+    });
+    document.getElementById('roleForm').addEventListener('change', countRole);
+    countRole();
+  }
+
+  /* Droits particuliers : le ✓ montre l'accès réel ; l'écart avec le rôle devient allow/deny. */
+  var rows = document.getElementById('userRows');
+  function updateRow(row) {
+    var cb = row.querySelector('input[type=checkbox]'), hid = row.querySelector('input[type=hidden]');
+    var def = row.dataset.def === '1', eff = cb.checked;
+    hid.value = eff === def ? 'inherit' : (eff ? 'allow' : 'deny');
+    var tag = row.querySelector('.tu-row-tag'), rs = row.querySelector('.tu-row-reset');
+    tag.hidden = rs.hidden = hid.value === 'inherit';
+    tag.className = 'tu-row-tag ' + (eff ? 'add' : 'del');
+    tag.textContent = eff ? 'Ajouté' : 'Retiré';
+  }
+  function countUser() {
+    var all = rows.querySelectorAll('.tu-row'), n = 0, d = 0;
+    all.forEach(function (r) { if (r.querySelector('input[type=checkbox]').checked) n++; if (r.querySelector('input[type=hidden]').value !== 'inherit') d++; });
+    document.getElementById('userCount').textContent = n + ' module' + (n > 1 ? 's' : '') + ' accessible' + (n > 1 ? 's' : '') + ' · ' + d + ' écart' + (d > 1 ? 's' : '') + ' avec le rôle';
+  }
+  if (rows) {
+    rows.querySelectorAll('.tu-row').forEach(updateRow);
+    countUser();
+    rows.addEventListener('change', function (e) { updateRow(e.target.closest('.tu-row')); countUser(); });
+    rows.addEventListener('click', function (e) {
+      var rs = e.target.closest('.tu-row-reset'); if (!rs) return;
+      e.preventDefault();
+      var row = rs.closest('.tu-row');
+      row.querySelector('input[type=checkbox]').checked = row.dataset.def === '1';
+      updateRow(row); countUser();
+    });
+  }
+})();
 </script>
 </body>
 </html>
