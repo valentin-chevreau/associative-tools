@@ -256,40 +256,14 @@ $pageTitle = 'Groupes — Touraine-Ukraine';
       @media (max-width: 900px) {
         body.tu-v2 .tu-main { margin-left: 0; padding: 16px; padding-top: 70px; }
       }
-      .grp-member {
-        display: flex; align-items: center; gap: 10px; padding: 8px 8px;
-        font-size: 12.5px; color: var(--tu-ink-900); cursor: pointer;
-        border-radius: 8px; transition: background-color .2s;
-      }
-      .grp-member + .grp-member { margin-top: 1px; }
-      .grp-member:hover { background: var(--tu-sand-50); }
-      .grp-member.saved { background: var(--tu-green-soft); }
-      .grp-member.error { background: var(--tu-red-soft); }
-      .grp-member.saving { opacity: .6; }
-      .grp-member .grp-member-name { flex: 1; }
-      .grp-member .grp-save-hint { font-size: 10px; color: var(--tu-ink-300); visibility: hidden; font-weight: 700; }
-      .grp-member.saved .grp-save-hint { visibility: visible; color: var(--tu-green-main); }
-      .grp-member.error .grp-save-hint { visibility: visible; color: var(--tu-red-main); }
-      .grp-member input[type=checkbox] {
-        appearance: none; -webkit-appearance: none; flex-shrink: 0; margin: 0;
-        width: 18px; height: 18px; border: 1.5px solid var(--tu-ink-200); border-radius: 5px;
-        background: #fff; cursor: pointer; position: relative;
-        transition: background-color .15s, border-color .15s;
-      }
-      .grp-member input[type=checkbox]:hover { border-color: var(--tu-amber-400); }
-      .grp-member input[type=checkbox]:checked {
-        background: var(--tu-amber-500); border-color: var(--tu-amber-500);
-      }
-      .grp-member input[type=checkbox]:checked::after {
-        content: ''; position: absolute; left: 5px; top: 1px; width: 5px; height: 9px;
-        border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg);
-      }
-      .grp-member input[type=checkbox]:focus-visible { outline: 2px solid var(--tu-amber-300); outline-offset: 2px; }
-      .grp-members-list { max-height: 300px; overflow-y: auto; border: 1px solid var(--tu-ink-100); border-radius: 10px; padding: 6px; margin: 10px 0; }
+      .grp-members { margin: 10px 0; }
+      .grp-state { min-height: 16px; margin-top: 4px; font-size: 11px; font-weight: 700; color: var(--tu-ink-300); }
+      .grp-state.saved { color: var(--tu-green-main); }
+      .grp-state.error { color: var(--tu-red-main); }
+      .grp-members.saving { opacity: .6; pointer-events: none; }
       .grp-rules summary { cursor: pointer; font-size: 11px; color: var(--tu-ink-300); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 4px 0; }
       .grp-rules summary:hover { color: var(--tu-ink-700); }
       .grp-rules-body { margin-top: 8px; display: flex; flex-direction: column; gap: 10px; padding-top: 8px; border-top: 1px dashed var(--tu-ink-100); }
-      .grp-fn-check { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 2px 0; }
     </style>
 </head>
 <body class="tu-v2">
@@ -325,7 +299,7 @@ suite_nav_render('users', '');
   <div class="tu-ph">
     <div>
       <div class="tu-ph-title">Groupes d'utilisateurs</div>
-      <div class="tu-ph-sub">Regroupe des utilisateurs sous un nom réutilisable (ex : Conseil d'Administration, Bureau…) — utilisé pour préremplir une liste de présence dans le module Documents. Cocher/décocher un membre enregistre aussitôt, pas besoin de bouton.</div>
+      <div class="tu-ph-sub">Regroupe des utilisateurs sous un nom réutilisable (ex : Conseil d'Administration, Bureau…) — utilisé pour préremplir une liste de présence dans le module Documents. Ajouter ou retirer un membre enregistre aussitôt, pas besoin de bouton.</div>
     </div>
   </div>
 
@@ -355,36 +329,32 @@ suite_nav_render('users', '');
         <div class="tu-card" style="padding:18px;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:2px;">
             <div style="font-weight:800;font-size:14.5px;"><?= h($g['name']) ?></div>
-            <div style="display:flex;gap:4px;">
-              <button type="button" class="tu-btn-link" style="font-size:11px;" onclick='openRenameGroupModal(<?= $gid ?>, <?= json_encode($g['name'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>renommer</button>
+            <div style="display:flex;gap:10px;">
+              <button type="button" class="tu-btn-link" onclick='openRenameGroupModal(<?= $gid ?>, <?= json_encode($g['name'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>renommer</button>
               <form method="post" style="display:inline;" onsubmit="return confirm('Supprimer le groupe « <?= h(addslashes($g['name'])) ?> » ? Les utilisateurs eux-mêmes ne sont pas supprimés.');">
                 <input type="hidden" name="action" value="delete_group">
                 <input type="hidden" name="group_id" value="<?= $gid ?>">
-                <button type="submit" class="tu-btn-link" style="font-size:11px;color:var(--tu-red-main);">supprimer</button>
+                <button type="submit" class="tu-btn-link danger">supprimer</button>
               </form>
             </div>
           </div>
           <div class="grp-count" data-group="<?= $gid ?>" style="font-size:11.5px;color:var(--tu-ink-300);margin-bottom:6px;"><?= count($members) ?> membre<?= count($members) > 1 ? 's' : '' ?></div>
 
-          <div class="grp-members-list">
-            <?php if (empty($volunteers)): ?>
-              <div style="padding:10px 0;font-size:12px;color:var(--tu-ink-300);font-style:italic;">Aucun utilisateur actif.</div>
-            <?php endif; ?>
-            <?php foreach ($volunteers as $v):
-              $vid = (int)$v['id'];
-              $checked = in_array($vid, $members, true);
-              $fullName = trim($v['first_name'] . ' ' . $v['last_name']);
-            ?>
-              <label class="grp-member">
-                <input type="checkbox"
-                       data-group="<?= $gid ?>" data-volunteer="<?= $vid ?>"
-                       <?= $checked ? 'checked' : '' ?>
-                       onchange="toggleGroupMember(this)">
-                <span class="grp-member-name"><?= h($fullName) ?></span>
-                <span class="grp-save-hint">✓</span>
-              </label>
-            <?php endforeach; ?>
-          </div>
+          <?php if (empty($volunteers)): ?>
+            <div style="padding:10px 0;font-size:12px;color:var(--tu-ink-300);font-style:italic;">Aucun utilisateur actif.</div>
+          <?php else: ?>
+            <div class="grp-members" data-group="<?= $gid ?>">
+              <select multiple class="tu-input grp-multi" data-bulk data-placeholder="Aucun membre — cliquer pour ajouter" data-group="<?= $gid ?>">
+                <?php foreach ($volunteers as $v):
+                  $vid = (int)$v['id'];
+                  $fullName = trim($v['first_name'] . ' ' . $v['last_name']);
+                ?>
+                  <option value="<?= $vid ?>" <?= in_array($vid, $members, true) ? 'selected' : '' ?>><?= h($fullName) ?></option>
+                <?php endforeach; ?>
+              </select>
+              <div class="grp-state" aria-live="polite"></div>
+            </div>
+          <?php endif; ?>
 
           <?php if ($rulesReady): ?>
             <details class="grp-rules">
@@ -407,14 +377,11 @@ suite_nav_render('users', '');
 
                 <div class="tu-form-field">
                   <span class="tu-lbl" style="font-size:11px;">Fonctions qui ajoutent automatiquement ici</span>
-                  <div style="margin-top:4px;">
+                  <select multiple name="auto_functions[]" class="tu-input" data-bulk data-placeholder="Aucune fonction">
                     <?php foreach (MEMBER_FUNCTIONS as $key => $label): ?>
-                      <label class="grp-fn-check">
-                        <input type="checkbox" name="auto_functions[]" value="<?= h($key) ?>" <?= in_array($key, $curFns, true) ? 'checked' : '' ?>>
-                        <?= h($label) ?>
-                      </label>
+                      <option value="<?= h($key) ?>" <?= in_array($key, $curFns, true) ? 'selected' : '' ?>><?= h($label) ?></option>
                     <?php endforeach; ?>
-                  </div>
+                  </select>
                 </div>
 
                 <button type="submit" class="tu-btn tu-btn-s tu-btn-sm" style="align-self:flex-start;">Enregistrer les règles</button>
@@ -483,62 +450,69 @@ function openRenameGroupModal(id, name) {
 }
 function closeRenameGroupModal() { document.getElementById('renameGroupModalOverlay').style.display = 'none'; }
 
-/* ── Autosave des cases à cocher membres : plus de bouton "Enregistrer" ───────
-   Chaque changement part immédiatement en AJAX. Si le serveur signale qu'une
-   cascade a ajouté l'utilisateur à d'autres groupes (ex: Bureau -> CA), on
-   recharge la page pour refléter ces changements sans que l'utilisateur ait
-   à naviguer manuellement. */
-function toggleGroupMember(checkbox) {
-  const row = checkbox.closest('.grp-member');
-  const groupId = checkbox.dataset.group;
-  const volunteerId = checkbox.dataset.volunteer;
-  const wasChecked = checkbox.checked;
-
-  row.classList.remove('saved', 'error');
-  row.classList.add('saving');
-
+/* ── Autosave des membres : plus de bouton "Enregistrer" ───────────────────────
+   Chaque ajout/retrait part immédiatement en AJAX (un appel par membre modifié).
+   Si le serveur signale qu'une cascade a ajouté l'utilisateur à d'autres groupes
+   (ex: Bureau -> CA), on recharge la page pour refléter ces changements. */
+function postToggle(groupId, volunteerId, member) {
   const body = new URLSearchParams({
-    action: 'toggle_member',
-    group_id: groupId,
-    volunteer_id: volunteerId,
-    member: wasChecked ? '1' : '0'
+    action: 'toggle_member', group_id: groupId, volunteer_id: volunteerId, member: member ? '1' : '0'
   });
-
-  fetch(window.location.pathname + window.location.search, {
+  return fetch(window.location.pathname + window.location.search, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: body.toString()
-  })
-    .then(function (r) { return r.json(); })
-    .then(function (data) {
-      row.classList.remove('saving');
-      if (!data || !data.ok) {
-        checkbox.checked = !wasChecked;
-        row.classList.add('error');
-        setTimeout(function () { row.classList.remove('error'); }, 1800);
+  }).then(function (r) { return r.json(); });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('select.grp-multi').forEach(function (select) {
+    const groupId = select.dataset.group;
+    const box = select.closest('.grp-members');
+    const state = box.querySelector('.grp-state');
+    let saved = select._tuMulti.values();
+    let busy = false;
+
+    function flash(cls, msg) {
+      state.className = 'grp-state ' + cls;
+      state.textContent = msg;
+      setTimeout(function () { state.className = 'grp-state'; state.textContent = ''; }, 1600);
+    }
+
+    select.addEventListener('change', async function () {
+      if (busy) return;
+      const now = select._tuMulti.values();
+      const added = now.filter(function (v) { return saved.indexOf(v) === -1; });
+      const removed = saved.filter(function (v) { return now.indexOf(v) === -1; });
+      if (!added.length && !removed.length) return;
+
+      busy = true;
+      box.classList.add('saving');
+      let cascaded = false, count = null, failed = false;
+      for (const v of added.concat(removed)) {
+        try {
+          const data = await postToggle(groupId, v, added.indexOf(v) !== -1);
+          if (!data || !data.ok) { failed = true; break; }
+          if (typeof data.count === 'number') count = data.count;
+          if (data.cascaded && data.cascaded.length) cascaded = true;
+        } catch (e) { failed = true; break; }
+      }
+      box.classList.remove('saving');
+      busy = false;
+
+      if (failed) {
+        select._tuMulti.set(saved, true); // retour à l'état enregistré
+        flash('error', 'Échec de l\u2019enregistrement');
         return;
       }
-      row.classList.add('saved');
-      setTimeout(function () { row.classList.remove('saved'); }, 900);
-
+      saved = now;
+      flash('saved', '\u2713 Enregistré');
       const countEl = document.querySelector('.grp-count[data-group="' + groupId + '"]');
-      if (countEl && typeof data.count === 'number') {
-        countEl.textContent = data.count + ' membre' + (data.count > 1 ? 's' : '');
-      }
-
-      if (data.cascaded && data.cascaded.length) {
-        // Un ou plusieurs autres groupes ont aussi été mis à jour par la cascade —
-        // on recharge pour que ces cases se cochent sans action manuelle.
-        location.reload();
-      }
-    })
-    .catch(function () {
-      checkbox.checked = !wasChecked;
-      row.classList.remove('saving');
-      row.classList.add('error');
-      setTimeout(function () { row.classList.remove('error'); }, 1800);
+      if (countEl && count !== null) countEl.textContent = count + ' membre' + (count > 1 ? 's' : '');
+      if (cascaded) location.reload();
     });
-}
+  });
+});
 </script>
 
 </div><!-- /tu-main -->

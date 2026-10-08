@@ -166,6 +166,12 @@ $pageTitle = 'Droits d\'accès — Touraine-Ukraine';
       .perm-tbl input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--tu-amber-500); cursor: pointer; }
       .perm-locked { color: var(--tu-ink-300); font-size: 12px; }
       .perm-eff { font-size: 11.5px; color: var(--tu-ink-300); }
+      @media (max-width: 640px) {
+        .tu-tbl.perm-user, .perm-user thead, .perm-user tbody, .perm-user tr, .perm-user td { display: block; }
+        .perm-user thead { display: none; }
+        .perm-user tr { padding: 10px 14px; border-top: 1px solid var(--tu-ink-100); }
+        .perm-user td { border: 0; padding: 2px 0; }
+      }
     </style>
 </head>
 <body class="tu-v2">
@@ -283,7 +289,7 @@ suite_nav_render('users', '');
         <?php if ($selRole === 'super_admin'): ?>
           <div style="padding:18px;font-size:13px;color:var(--tu-ink-400);">Un super admin a toujours accès à tout : aucun droit particulier à définir.</div>
         <?php else: ?>
-        <table class="tu-tbl">
+        <table class="tu-tbl perm-user">
           <thead><tr><th>Module</th><th>Par défaut du rôle</th><th>Pour cette personne</th></tr></thead>
           <tbody>
             <?php foreach ($modules as $key => $label):
@@ -293,11 +299,12 @@ suite_nav_render('users', '');
                 <td style="font-weight:600;"><?= h($label) ?></td>
                 <td class="perm-eff"><?= $roleDefault ? '✓ autorisé' : '✗ refusé' ?></td>
                 <td>
-                  <select name="user_perm[<?= h($key) ?>]" class="tu-input" style="max-width:240px;">
-                    <option value="inherit" <?= $cur === 'inherit' ? 'selected' : '' ?>>Selon le rôle (<?= $roleDefault ? 'autorisé' : 'refusé' ?>)</option>
-                    <option value="allow"   <?= $cur === 'allow'   ? 'selected' : '' ?>>Autoriser</option>
-                    <option value="deny"    <?= $cur === 'deny'    ? 'selected' : '' ?>>Refuser</option>
-                  </select>
+                  <div class="tu-tri" role="group" aria-label="<?= h($label) ?>">
+                    <?php foreach (['inherit' => 'Selon le rôle', 'allow' => 'Autoriser', 'deny' => 'Refuser'] as $val => $txt): ?>
+                      <button type="button" data-v="<?= $val ?>" class="<?= $val ?><?= $cur === $val ? ' on' : '' ?>"><?= h($txt) ?></button>
+                    <?php endforeach; ?>
+                    <input type="hidden" name="user_perm[<?= h($key) ?>]" value="<?= h($cur) ?>">
+                  </div>
                 </td>
               </tr>
             <?php endforeach; ?>
@@ -317,5 +324,14 @@ suite_nav_render('users', '');
 
 </div>
 </div><!-- /tu-main -->
+<script>
+document.addEventListener('click', function (e) {
+  var b = e.target.closest('.tu-tri button');
+  if (!b) return;
+  var g = b.parentNode;
+  g.querySelectorAll('button').forEach(function (k) { k.classList.toggle('on', k === b); });
+  g.querySelector('input').value = b.dataset.v;
+});
+</script>
 </body>
 </html>
