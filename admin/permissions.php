@@ -256,7 +256,7 @@ suite_nav_render('users', '');
     </div>
 
     <form method="get" style="padding:14px 18px;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;border-bottom:1px solid var(--tu-ink-100);">
-      <div class="tu-form-field" style="min-width:260px;">
+      <div class="tu-form-field" style="width:420px;max-width:100%;">
         <span class="tu-lbl">Utilisateur</span>
         <select name="user" class="tu-input" onchange="this.form.submit()">
           <option value="0">— Choisir —</option>
