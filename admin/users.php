@@ -77,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $newId = (int)$pdo->lastInsertId();
             $fullName = trim("$firstName $lastName");
             volunteer_groups_sync_auto_memberships($pdo, $newId, $memberFunction !== '' ? $memberFunction : null);
-            audit_log('admin', 'create', 'volunteer', $newId, $fullName, ['member_function' => $memberFunction, 'presence_status' => $presenceStatus]);
+            audit_log('admin', 'create', 'user', $newId, $fullName, ['member_function' => $memberFunction !== '' ? $memberFunction : null, 'presence_status' => $presenceStatus]);
             $success = "Bénévole « $fullName » créé.";
         }
     }
@@ -85,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // ── Actions sur un bénévole existant ────────────────────────────────────
     $volunteerId = (int)($_POST['volunteer_id'] ?? 0);
     if ($volunteerId > 0 && $action !== 'create_volunteer') {
-        $chk = $pdo->prepare("SELECT id, first_name, last_name FROM users WHERE id = ? AND deleted_at IS NULL");
+        $chk = $pdo->prepare("SELECT id, first_name, last_name, email, phone, member_function, presence_status, role, is_active FROM users WHERE id = ? AND deleted_at IS NULL");
         $chk->execute([$volunteerId]);
         $vol = $chk->fetch(PDO::FETCH_ASSOC);
 
@@ -118,7 +118,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ]);
                     volunteer_groups_sync_auto_memberships($pdo, $volunteerId, $memberFunction !== '' ? $memberFunction : null);
                     $fullName = trim("$firstName $lastName");
-                    audit_log('admin', 'update', 'volunteer', $volunteerId, $fullName, ['member_function' => $memberFunction, 'presence_status' => $presenceStatus]);
+                    audit_update('admin', 'user', $volunteerId, $fullName, $vol,
+                        ['first_name' => $firstName, 'last_name' => $lastName, 'email' => $email, 'phone' => $phone,
+                         'member_function' => $memberFunction, 'presence_status' => $presenceStatus],
+                        null, [], ['email', 'phone']);
                     $success = "Profil mis à jour pour $fullName.";
                 }
             }
@@ -126,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($action === 'toggle_active') {
                 $newStatus = (int)($_POST['new_status'] ?? 1);
                 $pdo->prepare("UPDATE users SET is_active = ? WHERE id = ?")->execute([$newStatus, $volunteerId]);
-                audit_log('admin', 'update', 'volunteer', $volunteerId, $fullName, ['action' => $newStatus ? 'activate' : 'deactivate']);
+                audit_log('admin', 'toggle', 'user', $volunteerId, $fullName, ['changes' => ['is_active' => ['from' => (int)$vol['is_active'], 'to' => $newStatus]]]);
                 $success = $newStatus ? "$fullName réactivé." : "$fullName désactivé.";
             }
 
@@ -149,7 +152,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $pdo->prepare("DELETE FROM suite_user_permissions WHERE user_id = ?")->execute([$volunteerId]);
                         } catch (Throwable $e) { /* table de droits pas encore migrée */ }
                         $pdo->commit();
-                        audit_log('admin', 'delete', 'volunteer', $volunteerId, $fullName, ['soft_delete' => true]);
+                        audit_log('admin', 'delete', 'user', $volunteerId, $fullName, ['soft_delete' => true, 'role_precedent' => $vol['role'] ?? null]);
                         $success = "$fullName supprimé. Son historique (inscriptions, présences…) est conservé.";
                     } catch (Throwable $e) {
                         $pdo->rollBack();
@@ -175,7 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     $pdo->prepare("UPDATE users SET access_code = ?, role = ?, code_created_at = NOW() WHERE id = ?")
                         ->execute([$newCode, $role, $volunteerId]);
-                    audit_log('admin', 'update', 'volunteer', $volunteerId, $fullName, ['action' => 'grant_access', 'role' => $role]);
+                    audit_log('admin', 'access_grant', 'user', $volunteerId, $fullName, ['role' => $role, 'role_precedent' => $vol['role'] ?? null]);
                     $revealedCode = $newCode;
                     $revealedFor  = $fullName;
                     $success = "Accès attribué à $fullName.";
@@ -184,7 +187,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($action === 'revoke_access') {
                 $pdo->prepare("UPDATE users SET access_code = NULL, role = NULL WHERE id = ?")->execute([$volunteerId]);
-                audit_log('admin', 'update', 'volunteer', $volunteerId, $fullName, ['action' => 'revoke_access']);
+                audit_log('admin', 'access_revoke', 'user', $volunteerId, $fullName, ['role_precedent' => $vol['role'] ?? null]);
                 $success = "Accès révoqué pour $fullName.";
             }
 
@@ -194,7 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $errors[] = "Rôle invalide.";
                 } else {
                     $pdo->prepare("UPDATE users SET role = ? WHERE id = ?")->execute([$role, $volunteerId]);
-                    audit_log('admin', 'update', 'volunteer', $volunteerId, $fullName, ['action' => 'change_role', 'role' => $role]);
+                    audit_log('admin', 'role_change', 'user', $volunteerId, $fullName, ['changes' => ['role' => ['from' => $vol['role'] ?? null, 'to' => $role]]]);
                     $success = "Rôle mis à jour pour $fullName.";
                 }
             }
@@ -211,7 +214,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 $pdo->prepare("UPDATE users SET access_code = ?, code_created_at = NOW() WHERE id = ?")
                     ->execute([$newCode, $volunteerId]);
-                audit_log('admin', 'update', 'volunteer', $volunteerId, $fullName, ['action' => 'regenerate_code']);
+                audit_log('admin', 'code_regenerate', 'user', $volunteerId, $fullName);
                 $revealedCode = $newCode;
                 $revealedFor  = $fullName;
                 $success = "Code régénéré pour $fullName.";
@@ -364,7 +367,7 @@ suite_nav_render('users', '');
   <div class="tu-kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px;">
     <div class="tu-kpi"><div class="tu-kpi-val"><?= $totalActive ?></div><div class="tu-kpi-lbl">Comptes actifs</div></div>
     <div class="tu-kpi amber"><div class="tu-kpi-val"><?= $totalWithAccess ?></div><div class="tu-kpi-lbl">Accès admin</div></div>
-    <div class="tu-kpi"><div class="tu-kpi-val"><?= $totalTemp ?></div><div class="tu-kpi-lbl">Membres temporaires</div></div>
+    <div class="tu-kpi"><div class="tu-kpi-val"><?= $totalTemp ?></div><div class="tu-kpi-lbl">Membres occasionnels</div></div>
   </div>
 
   <!-- Filtres -->
@@ -389,7 +392,7 @@ suite_nav_render('users', '');
   <!-- Onglets -->
   <div class="tu-tabs" style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1.5px solid var(--tu-ink-100);">
     <button type="button" class="tu-tab-btn active" data-tab="permanent" onclick="switchUserTab('permanent')">Permanents</button>
-    <button type="button" class="tu-tab-btn" data-tab="temporaire" onclick="switchUserTab('temporaire')">Temporaires</button>
+    <button type="button" class="tu-tab-btn" data-tab="temporaire" onclick="switchUserTab('temporaire')">Occasionnels</button>
   </div>
   <style>
     .tu-tab-btn {
@@ -583,7 +586,7 @@ function switchUserTab(tab) {
           <div class="tu-select-wrap">
             <select name="presence_status" class="tu-input tu-select-native tu-select-enhance" id="createPresenceSelect">
               <option value="permanent">Permanent</option>
-              <option value="temporaire">Temporaire (collecte ponctuelle, chargement…)</option>
+              <option value="temporaire">Occasionnel (collecte ponctuelle, chargement…)</option>
             </select>
           </div>
         </div>
@@ -643,7 +646,7 @@ function switchUserTab(tab) {
           <div class="tu-select-wrap">
             <select name="presence_status" class="tu-input tu-select-native tu-select-enhance" id="editPresenceSelect">
               <option value="permanent">Permanent</option>
-              <option value="temporaire">Temporaire (collecte ponctuelle, chargement…)</option>
+              <option value="temporaire">Occasionnel (collecte ponctuelle, chargement…)</option>
             </select>
           </div>
         </div>

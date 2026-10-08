@@ -175,14 +175,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['step'] ?? '') === 'confirm
                 if ($id) $nbCrees++; else $nbIgnores++;
             }
 
-            if (function_exists('audit_log')) {
-                audit_log('prospection', 'import_csv', 'categorie', $categorieId, $categorie['label'], [
-                    'fichier' => $pending['nom_fichier'],
-                    'lignes_creees' => $nbCrees,
-                    'lignes_ignorees' => $nbIgnores,
-                    'mappage' => $mapping,
-                ]);
-            }
+            audit_log('prospection', 'import_csv', 'categorie', $categorieId, $categorie['label'], [
+                'fichier' => $pending['nom_fichier'],
+                'lignes_creees' => $nbCrees,
+                'lignes_ignorees' => $nbIgnores,
+                'mappage' => $mapping,
+            ]);
 
             $resultat = [
                 'nb_crees'   => $nbCrees,

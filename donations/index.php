@@ -318,6 +318,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_manual_add'])) {
                     'receipt_eligible' => $receiptEligible,
                     'raw_payload' => json_encode($payload, JSON_UNESCAPED_UNICODE),
                 ]);
+                audit_log('donations', 'create', 'donation', (int)$pdo->lastInsertId(),
+                    'Don manuel du ' . $dt->format('d/m/Y') . ' — ' . number_format((float)$amount, 2, ',', ' ') . ' €',
+                    ['montant' => round((float)$amount, 2), 'moyen' => $payment !== '' ? $payment : null, 'eligible_recu' => $receiptEligible]);
                 $msg = "Don manuel ajouté.";
             } catch (Throwable $e) {
                 $info['errors'][] = "Insertion impossible : " . $e->getMessage();
@@ -335,7 +338,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_manual_delete'])) 
         if ($id <= 0) {
             $info['errors'][] = "ID invalide.";
         } else {
-            $stmt = $pdo->prepare("SELECT id, source FROM donations WHERE id = :id");
+            $stmt = $pdo->prepare("SELECT id, source, amount, donation_date, receipt_number FROM donations WHERE id = :id");
             $stmt->execute(['id' => $id]);
             $don = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -346,6 +349,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_manual_delete'])) 
             } else {
                 $del = $pdo->prepare("DELETE FROM donations WHERE id = :id AND source = 'manual'");
                 $del->execute(['id' => $id]);
+                audit_log('donations', 'delete', 'donation', $id,
+                    'Don manuel du ' . date('d/m/Y', strtotime((string)$don['donation_date'])) . ' — ' . number_format((float)$don['amount'], 2, ',', ' ') . ' €',
+                    ['montant' => round((float)$don['amount'], 2), 'recu_numero' => ($don['receipt_number'] ?? '') !== '' ? $don['receipt_number'] : null]);
                 $msg = "Don manuel supprimé.";
             }
         }
@@ -385,6 +391,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_generate_receipt']
                         WHERE id = :id
                     ");
                     $stmt->execute(['num' => $receiptNumber, 'id' => $id]);
+                    audit_log('donations', 'generate', 'donation', $id,
+                        'Reçu fiscal n° ' . $receiptNumber,
+                        ['montant' => round((float)$don['amount'], 2), 'regeneration' => ((string)($don['receipt_number'] ?? '') !== '')]);
                     $msg = "Reçu fiscal généré (n° {$receiptNumber}).";
                 } catch (Throwable $e) {
                     $info['errors'][] = "Impossible de générer le reçu : " . $e->getMessage();
@@ -609,7 +618,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_import'])) {
                         }
                     }
 
-                    if (!$dryRun) $pdo->commit();
+                    if (!$dryRun) {
+                        $pdo->commit();
+                        audit_log('donations', 'import', 'donation', null, (string)$orig, [
+                            'lignes' => $rows, 'crees' => $inserted, 'mis_a_jour' => $updated, 'ignorees' => $skipped, 'invalides' => $bad,
+                        ]);
+                    }
 
                     $info['import'] = [
                         'rows' => $rows,
@@ -918,7 +932,7 @@ elseif (isset($_POST['do_helloasso_sync_now'])) $activeTab = 'sync';
     <button type="submit" class="tu-btn tu-btn-p">Synchroniser maintenant</button>
   </form>
 
-  <p style="margin-top:12px;margin-bottom:0;font-size:11px;color:var(--tu-ink-300);">Les dons HelloAsso apparaissent ci-dessous avec les mêmes règles que l'import CSV (non modifiables/supprimables ici). Nécessite <code>donations/.env</code> renseigné (HELLOASSO_CLIENT_ID / SECRET / ORG_SLUG).</p>
+  <p style="margin-top:12px;margin-bottom:0;font-size:11px;color:var(--tu-ink-300);">Les dons HelloAsso apparaissent ci-dessous avec les mêmes règles que l'import CSV (non modifiables/supprimables ici). Nécessite le <code>.env</code> de la suite renseigné (HELLOASSO_CLIENT_ID / SECRET / ORG_SLUG).</p>
   </div><!-- /panel sync -->
   <?php endif; ?>
 
@@ -931,7 +945,7 @@ elseif (isset($_POST['do_helloasso_sync_now'])) $activeTab = 'sync';
     <div class="tu-form-grid tu-form-grid-3 tu-mb4">
       <div class="tu-form-field">
         <span class="tu-lbl">Date du don *</span>
-        <input class="tu-input" type="text" name="donation_date" placeholder="JJ/MM/AAAA" required>
+        <input class="tu-input" type="date" name="donation_date" required>
       </div>
       <div class="tu-form-field">
         <span class="tu-lbl">Montant (€) *</span>
@@ -1208,5 +1222,6 @@ elseif (isset($_POST['do_helloasso_sync_now'])) $activeTab = 'sync';
 
   </div><!-- /tu-pg -->
 </div><!-- /tu-main -->
+<script src="<?= h($base) ?>/assets/js/tu_datepicker.js?v=<?= (int)@filemtime(dirname(__DIR__) . '/assets/js/tu_datepicker.js') ?>"></script>
 </body>
 </html>

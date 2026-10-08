@@ -54,15 +54,24 @@ if ($tablesOk && $_SERVER['REQUEST_METHOD'] === 'POST') {
             INSERT INTO suite_role_permissions (role, module, allowed) VALUES (?, ?, ?)
             ON DUPLICATE KEY UPDATE allowed = VALUES(allowed)
         ");
+        $prev = [];
+        foreach ($pdo->query("SELECT role, module, allowed FROM suite_role_permissions")->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $prev[$r['role']][$r['module']] = (int)$r['allowed'];
+        }
         $changes = [];
         foreach (array_keys($editableRoles) as $role) {
             foreach (array_keys($modules) as $module) {
                 $allowed = !empty($_POST['perm'][$role][$module]) ? 1 : 0;
                 $stmt->execute([$role, $module, $allowed]);
-                $changes[$role][$module] = $allowed;
+                $was = $prev[$role][$module] ?? (suite_module_default_access($role, $module) ? 1 : 0);
+                if ($was !== $allowed) {
+                    $changes[$role . ' › ' . $module] = ['from' => $was, 'to' => $allowed];
+                }
             }
         }
-        audit_log('admin', 'update', 'permissions', null, 'Droits par rôle', $changes);
+        if ($changes) {
+            audit_log('admin', 'update', 'permissions', null, 'Droits par rôle', ['changes' => $changes]);
+        }
         suite_permissions_load(true);
         $success = "Droits des rôles enregistrés.";
     }
@@ -83,21 +92,30 @@ if ($tablesOk && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 INSERT INTO suite_user_permissions (user_id, module, allowed, updated_by) VALUES (?, ?, ?, ?)
                 ON DUPLICATE KEY UPDATE allowed = VALUES(allowed), updated_by = VALUES(updated_by)
             ");
+            $prevQ = $pdo->prepare("SELECT module, allowed FROM suite_user_permissions WHERE user_id = ?");
+            $prevQ->execute([$uid]);
+            $prevOv = [];
+            foreach ($prevQ->fetchAll(PDO::FETCH_ASSOC) as $r) $prevOv[$r['module']] = ((int)$r['allowed'] === 1) ? 'allow' : 'deny';
             $changes = [];
             foreach (array_keys($modules) as $module) {
                 $v = $_POST['user_perm'][$module] ?? 'inherit';
                 if ($v === 'allow') {
                     $ups->execute([$uid, $module, 1, $me]);
-                    $changes[$module] = 'allow';
                 } elseif ($v === 'deny') {
                     $ups->execute([$uid, $module, 0, $me]);
-                    $changes[$module] = 'deny';
                 } else {
+                    $v = 'inherit';
                     $del->execute([$uid, $module]);
+                }
+                $was = $prevOv[$module] ?? 'inherit';
+                if ($was !== $v) {
+                    $changes[$module] = ['from' => $was, 'to' => $v];
                 }
             }
             $name = trim($target['first_name'] . ' ' . $target['last_name']);
-            audit_log('admin', 'update', 'permissions', $uid, $name, ['overrides' => $changes]);
+            if ($changes) {
+                audit_log('admin', 'update', 'permissions', $uid, $name, ['changes' => $changes]);
+            }
             suite_permissions_load(true);
             $success = "Droits particuliers enregistrés pour $name.";
         }

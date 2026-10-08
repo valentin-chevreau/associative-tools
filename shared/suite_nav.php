@@ -395,6 +395,7 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
       Utilisateurs
     </a>
 
+    <?php if ($isSuperAdmin): ?>
     <!-- JOURNAL D'AUDIT -->
     <a href="<?= h2($base . '/admin/audit_log.php') ?>"
        class="tu-sb-item <?= _mod_active('audit', $activeModule) ?>"
@@ -407,6 +408,7 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
       </svg>
       Journal d'audit
     </a>
+    <?php endif; ?>
 
     <?php if ($isSuperAdmin): ?>
     <!-- MIGRATIONS SQL -->

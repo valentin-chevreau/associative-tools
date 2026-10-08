@@ -99,9 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (@file_put_contents(suite_logo_path(), $png, LOCK_EX) === false) {
                     throw new RuntimeException("Impossible d'enregistrer le logo (droits d'écriture sur uploads/branding ?).");
                 }
-                if (function_exists('audit_log')) {
-                    audit_log('admin', 'update', 'logo', 0, 'Logo de la suite');
-                }
+                audit_log('admin', 'update', 'logo', null, 'Logo de la suite');
                 $success = "Logo enregistré.";
             } catch (Throwable $e) {
                 $errors[] = $e->getMessage();
@@ -112,9 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (is_file($path) && !@unlink($path)) {
             $errors[] = "Impossible de supprimer le fichier (droits ?).";
         } else {
-            if (function_exists('audit_log')) {
-                audit_log('admin', 'delete', 'logo', 0, 'Logo de la suite');
-            }
+            audit_log('admin', 'delete', 'logo', null, 'Logo de la suite');
             $success = "Logo supprimé : la pastille « TU » est de nouveau utilisée.";
         }
     }

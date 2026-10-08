@@ -125,9 +125,7 @@ function creer_contact_prospection(PDO $pdo, int $categorieId, array $data, arra
     $stmt->execute([$categorieId, $nom, $commune, $adresse, $tel, $email, $siteWeb, $referent, $priorite, $extraJson]);
 
     $id = (int)$pdo->lastInsertId();
-    if (function_exists('audit_log')) {
-        audit_log('prospection', 'creation_fiche', 'contact', $id, $nom);
-    }
+    audit_log('prospection', 'creation_fiche', 'contact', $id, $nom);
     return $id;
 }
 
@@ -148,7 +146,7 @@ function modifier_contact_prospection(PDO $pdo, int $id, array $data): bool {
     $statut   = $data['statut'] ?? 'a_contacter';
 
     $ok = $stmt->execute([$nom, $commune, $adresse, $tel, $email, $siteWeb, $referent, $priorite, $statut, $id]);
-    if ($ok && function_exists('audit_log')) {
+    if ($ok) {
         audit_log('prospection', 'modification_fiche', 'contact', $id, $nom);
     }
     return $ok;
@@ -288,7 +286,7 @@ function get_stats_prospection(PDO $pdo, array $filters = []): array {
 function desactiver_contact_prospection(PDO $pdo, int $id): bool {
     $stmt = $pdo->prepare("UPDATE prospection_contacts SET actif = 0 WHERE id = ?");
     $ok = $stmt->execute([$id]);
-    if ($ok && function_exists('audit_log')) {
+    if ($ok) {
         audit_log('prospection', 'desactivation_fiche', 'contact', $id);
     }
     return $ok;
@@ -306,7 +304,7 @@ function supprimer_contact_prospection(PDO $pdo, int $id): bool {
 
     $stmt = $pdo->prepare("DELETE FROM prospection_contacts WHERE id = ?");
     $ok = $stmt->execute([$id]);
-    if ($ok && function_exists('audit_log')) {
+    if ($ok) {
         audit_log('prospection', 'suppression_fiche', 'contact', $id, $contact['nom']);
     }
     return $ok;
@@ -362,10 +360,8 @@ function prospection_action_masse(PDO $pdo, string $action, array $ids, array $o
         if ($success) $ok++; else $fail++;
     }
 
-    if (function_exists('audit_log')) {
-        audit_log('prospection', 'action_masse_' . $action, 'contact', null, null,
-            array_merge(['nb_fiches' => count($ids), 'nb_ok' => $ok, 'nb_echec' => $fail], $options));
-    }
+    audit_log('prospection', 'action_masse_' . $action, 'contact', null, null,
+        array_merge(['nb_fiches' => count($ids), 'nb_ok' => $ok, 'nb_echec' => $fail], $options));
 
     return ['ok' => $ok, 'fail' => $fail];
 }
@@ -394,9 +390,7 @@ function ajouter_suivi_prospection(PDO $pdo, int $contactId, string $type, strin
 
     if ($ok) {
         mettre_a_jour_statut_auto_prospection($pdo, $contactId);
-        if (function_exists('audit_log')) {
-            audit_log('prospection', 'ajout_suivi', 'contact', $contactId, null, ['type' => $type, 'date' => $date]);
-        }
+        audit_log('prospection', 'ajout_suivi', 'contact', $contactId, null, ['type' => $type, 'date' => $date]);
     }
     return $ok;
 }
@@ -419,10 +413,8 @@ function supprimer_suivi_prospection(PDO $pdo, int $suiviId, ?int $contactIdAtte
 
     if ($ok) {
         mettre_a_jour_statut_auto_prospection($pdo, (int)$row['contact_id']);
-        if (function_exists('audit_log')) {
-            audit_log('prospection', 'suppression_suivi', 'contact', (int)$row['contact_id'], null,
-                ['type' => $row['type'], 'date' => $row['date_suivi']]);
-        }
+        audit_log('prospection', 'suppression_suivi', 'contact', (int)$row['contact_id'], null,
+            ['type' => $row['type'], 'date' => $row['date_suivi']]);
     }
     return $ok;
 }
@@ -463,9 +455,7 @@ function prospection_marquer_annee_contact(PDO $pdo, int $contactId, int $annee,
         $ok = $ins->execute([$contactId, $date, $annee, $auteur, $commentaire]);
         if ($ok) {
             mettre_a_jour_statut_auto_prospection($pdo, $contactId);
-            if (function_exists('audit_log')) {
-                audit_log('prospection', 'marquage_annee_contactee', 'contact', $contactId, null, ['annee' => $annee]);
-            }
+            audit_log('prospection', 'marquage_annee_contactee', 'contact', $contactId, null, ['annee' => $annee]);
         }
         return $ok;
     }
@@ -479,9 +469,7 @@ function prospection_marquer_annee_contact(PDO $pdo, int $contactId, int $annee,
     $ok = $del->execute([$contactId, $annee, $commentaire]);
     if ($ok) {
         mettre_a_jour_statut_auto_prospection($pdo, $contactId);
-        if (function_exists('audit_log')) {
-            audit_log('prospection', 'demarquage_annee_contactee', 'contact', $contactId, null, ['annee' => $annee]);
-        }
+        audit_log('prospection', 'demarquage_annee_contactee', 'contact', $contactId, null, ['annee' => $annee]);
     }
     return $ok;
 }

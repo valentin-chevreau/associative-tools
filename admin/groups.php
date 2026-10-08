@@ -123,9 +123,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'toggl
         $cascaded = array_values(array_diff($afterIds, $beforeIds));
     }
 
-    if (function_exists('audit_log')) {
-        audit_log('admin', 'update', 'volunteer_group', $groupId, $grp['name'], ['volunteer_id' => $volunteerId, 'member' => $member]);
-    }
+    $vq = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
+    $vq->execute([$volunteerId]);
+    $vRow = $vq->fetch(PDO::FETCH_ASSOC);
+    audit_log('admin', $member ? 'register' : 'unregister', 'volunteer_group', $groupId, $grp['name'], [
+        'benevole'  => $vRow ? trim($vRow['first_name'] . ' ' . $vRow['last_name']) : ('#' . $volunteerId),
+        'cascade'   => !empty($cascaded) ? count($cascaded) . ' groupe(s) lié(s) mis à jour' : null,
+    ]);
 
     $cStmt = $pdo->prepare("SELECT COUNT(*) FROM volunteer_group_members WHERE group_id = ?");
     $cStmt->execute([$groupId]);
@@ -149,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $maxOrder = (int)$pdo->query("SELECT COALESCE(MAX(sort_order), 0) FROM volunteer_groups")->fetchColumn();
             $pdo->prepare("INSERT INTO volunteer_groups (name, sort_order) VALUES (?, ?)")->execute([$name, $maxOrder + 1]);
             $newId = (int)$pdo->lastInsertId();
-            if (function_exists('audit_log')) audit_log('admin', 'create', 'volunteer_group', $newId, $name);
+            audit_log('admin', 'create', 'volunteer_group', $newId, $name);
             $success = "Groupe « $name » créé.";
         }
     }
@@ -167,7 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $errors[] = "Le nom du groupe est obligatoire.";
                 } else {
                     $pdo->prepare("UPDATE volunteer_groups SET name = ? WHERE id = ?")->execute([$name, $groupId]);
-                    if (function_exists('audit_log')) audit_log('admin', 'update', 'volunteer_group', $groupId, $name);
+                    audit_update('admin', 'volunteer_group', $groupId, $name, ['name' => $grp['name']], ['name' => $name]);
                     $success = "Groupe renommé en « $name ».";
                 }
             }
@@ -190,15 +194,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 volunteer_groups_apply_group_functions($pdo, $groupId);
                 volunteer_groups_sync_cascade_for_group($pdo, $groupId);
 
-                if (function_exists('audit_log')) {
-                    audit_log('admin', 'update', 'volunteer_group', $groupId, $grp['name'], ['rules' => true]);
-                }
+                audit_log('admin', 'update', 'volunteer_group', $groupId, $grp['name'], [
+                    'regles'            => 'règles automatiques modifiées',
+                    'groupe_implique'   => $impliesId,
+                    'fonctions_auto'    => $autoFnsStr,
+                ]);
                 $success = "Règles automatiques mises à jour pour « {$grp['name']} ».";
             }
 
             if ($action === 'delete_group') {
                 $pdo->prepare("DELETE FROM volunteer_groups WHERE id = ?")->execute([$groupId]);
-                if (function_exists('audit_log')) audit_log('admin', 'delete', 'volunteer_group', $groupId, $grp['name']);
+                audit_log('admin', 'delete', 'volunteer_group', $groupId, $grp['name']);
                 $success = "Groupe « {$grp['name']} » supprimé.";
             }
         } else {

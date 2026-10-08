@@ -213,6 +213,13 @@ if (!function_exists('suite_base')) {
     }
 }
 
+if (!function_exists('suite_url')) {
+    /** URL d'une page de la Suite à partir d'un chemin absolu (ex. '/index.php'), préfixée par /tools ou /preprod-tools. */
+    function suite_url(string $path): string {
+        return suite_base() . '/' . ltrim(trim($path), '/');
+    }
+}
+
 if (!function_exists('suite_css_v')) {
     /** Suffixe de cache-busting (?v=mtime) pour suite_nav.css : force le rechargement après déploiement (web-app iPhone incluse). */
     function suite_css_v(): string {
@@ -418,7 +425,10 @@ if (!function_exists('admin_login_with_code')) {
         if (!($pdo instanceof PDO)) return false;
 
         $code = trim($code);
-        if ($code === '' || !ctype_digit($code) || strlen($code) !== 8) return false;
+        if ($code === '' || !ctype_digit($code) || strlen($code) !== 8) {
+            audit_log('auth', 'login_failed', null, null, null, ['reason' => 'format_invalide']);
+            return false;
+        }
 
         $stmt = $pdo->prepare("
             SELECT id, first_name, last_name, role
@@ -429,10 +439,16 @@ if (!function_exists('admin_login_with_code')) {
         $stmt->execute([$code]);
         $volunteer = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$volunteer) return false;
+        if (!$volunteer) {
+            audit_log('auth', 'login_failed', null, null, null, ['reason' => 'code_inconnu_ou_compte_inactif']);
+            return false;
+        }
 
         $role = (string)$volunteer['role'];
-        if (!in_array($role, ['admin', 'admin_plus', 'super_admin'], true)) return false;
+        if (!in_array($role, ['admin', 'admin_plus', 'super_admin'], true)) {
+            audit_log('auth', 'login_failed', 'volunteer', (int)$volunteer['id'], trim($volunteer['first_name'] . ' ' . $volunteer['last_name']), ['reason' => 'role_non_autorise']);
+            return false;
+        }
 
         // Repart d'une session propre : sans cela, les drapeaux de rôle d'une
         // connexion précédente (super_admin, admin_plus…) survivaient à un
@@ -463,9 +479,7 @@ if (!function_exists('admin_login_with_code')) {
         $pdo->prepare("UPDATE users SET last_login_at = NOW() WHERE id = ?")
             ->execute([(int)$volunteer['id']]);
 
-        if (function_exists('audit_log')) {
-            audit_log('auth', 'login', 'volunteer', (int)$volunteer['id'], $_SESSION['volunteer_name']);
-        }
+        audit_log('auth', 'login', 'volunteer', (int)$volunteer['id'], $_SESSION['volunteer_name'], ['role' => $role]);
 
         return true;
     }
@@ -473,7 +487,7 @@ if (!function_exists('admin_login_with_code')) {
 
 if (!function_exists('admin_logout')) {
     function admin_logout(): void {
-        if (function_exists('audit_log') && current_volunteer_id() !== null) {
+        if (current_volunteer_id() !== null) {
             audit_log('auth', 'logout', 'volunteer', current_volunteer_id(), current_volunteer_name());
         }
         unset(
@@ -529,48 +543,9 @@ if (!function_exists('require_super_admin')) {
 }
 
 /* ====================================================================
-   JOURNAL D'AUDIT — utilisable par tous les modules
+   JOURNAL D'AUDIT — voir shared/audit.php (audit_log, audit_update, audit_diff…)
    ==================================================================== */
-
-if (!function_exists('audit_log')) {
-    function audit_log(
-        string $module,
-        string $action,
-        ?string $entityType = null,
-        ?int $entityId = null,
-        ?string $entityLabel = null,
-        ?array $details = null
-    ): void {
-        $pdo = _bootstrap_get_pdo();
-        if (!($pdo instanceof PDO)) return;
-
-        try {
-            $volunteerId = current_volunteer_id();
-            $actorName   = $volunteerId !== null ? current_volunteer_name() : 'Système';
-            $actorRole   = current_role();
-            $ip          = $_SERVER['REMOTE_ADDR'] ?? null;
-
-            $pdo->prepare("
-                INSERT INTO suite_audit_log
-                    (volunteer_id, actor_name, actor_role, module, action, entity_type, entity_id, entity_label, details_json, ip_address)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ")->execute([
-                $volunteerId,
-                $actorName,
-                $actorRole,
-                $module,
-                $action,
-                $entityType,
-                $entityId,
-                $entityLabel,
-                $details !== null ? json_encode($details, JSON_UNESCAPED_UNICODE) : null,
-                $ip,
-            ]);
-        } catch (Exception $e) {
-            error_log('audit_log failed: ' . $e->getMessage());
-        }
-    }
-}
+require_once __DIR__ . '/audit.php';
 
 /**
  * Formatage lisible d'un numéro de téléphone : groupe les chiffres par 2
@@ -590,17 +565,6 @@ if (!function_exists('format_phone')) {
 
         $grouped = trim(chunk_split($digits, 2, ' '));
         return $hasPlus ? '+' . $grouped : $grouped;
-    }
-}
-
-/**
- * Compatibilité — anciennement fournie par auth_helper.php (fichier disparu).
- * Wrapper simplifié autour de audit_log() pour les appels historiques
- * log_action($module, $action, $description).
- */
-if (!function_exists('log_action')) {
-    function log_action(string $module, string $action, ?string $description = null): void {
-        audit_log($module, $action, null, null, null, $description !== null ? ['description' => $description] : null);
     }
 }
 
@@ -642,6 +606,9 @@ if (!function_exists('suite_forbidden')) {
         $base = suite_base();
         $e = static fn(string $v): string => htmlspecialchars($v, ENT_QUOTES, 'UTF-8');
         $isAdm = is_admin();
+        if ($isAdm) {
+            audit_log('auth', 'access_denied', null, null, $title, ['requis' => $requiredLabel !== '' ? $requiredLabel : $activeModule]);
+        }
         $roleLabel = match (current_role()) {
             'super_admin' => 'Super admin',
             'admin_plus'  => 'Admin+',

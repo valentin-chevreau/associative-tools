@@ -25,8 +25,10 @@ class HelloAssoConfigException extends RuntimeException {}
 class HelloAssoApiException extends RuntimeException {}
 
 /**
- * Lit la config HelloAsso depuis donations/.env (voir includes/env.php).
+ * Lit la config HelloAsso depuis le .env unique de la suite (voir includes/env.php).
  */
+require_once dirname(__DIR__, 2) . '/shared/audit.php';
+
 function helloasso_config(): array {
     $clientId     = (string)env('HELLOASSO_CLIENT_ID', '');
     $clientSecret = (string)env('HELLOASSO_CLIENT_SECRET', '');
@@ -36,7 +38,7 @@ function helloasso_config(): array {
     if ($clientId === '' || $clientSecret === '' || $orgSlug === '') {
         throw new HelloAssoConfigException(
             "Configuration HelloAsso incomplète : vérifie HELLOASSO_CLIENT_ID, " .
-            "HELLOASSO_CLIENT_SECRET et HELLOASSO_ORG_SLUG dans donations/.env"
+            "HELLOASSO_CLIENT_SECRET et HELLOASSO_ORG_SLUG dans le .env de la suite"
         );
     }
 
@@ -45,7 +47,7 @@ function helloasso_config(): array {
     // (ex: un formulaire d'adhésion dont order.formType n'est pas toujours
     // renvoyé par l'API "liste des paiements", et dont les lignes de détail
     // sont malgré tout typées "Donation" par HelloAsso). Voir
-    // HELLOASSO_EXCLUDE_FORM_SLUGS dans donations/.env.example.
+    // HELLOASSO_EXCLUDE_FORM_SLUGS dans .env.example (racine).
     $excludeRaw = (string)env('HELLOASSO_EXCLUDE_FORM_SLUGS', '');
     $excludeFormSlugs = array_values(array_filter(array_map(
         fn($s) => mb_strtolower(trim($s)),
@@ -474,6 +476,16 @@ function helloasso_run_sync(PDO $pdo, int $days = 90, bool $dryRun = false, ?str
         if (!$dryRun) $pdo->commit();
 
         $result['ok'] = ($result['errors'] === 0);
+        if (!$dryRun) {
+            audit_log('donations', 'sync', 'donation', null, 'Synchronisation HelloAsso', [
+                'paiements_lus' => $result['payments_fetched'],
+                'crees'         => $result['inserted'],
+                'mis_a_jour'    => $result['updated'],
+                'ignores'       => $result['skipped_not_donation'],
+                'erreurs'       => $result['errors'],
+                'derniere_erreur' => $result['last_error'],
+            ]);
+        }
 
         if (!$dryRun) {
             $stmt = $pdo->prepare("
