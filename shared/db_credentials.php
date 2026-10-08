@@ -2,8 +2,8 @@
 /**
  * shared/db_credentials.php — SOURCE UNIQUE des identifiants de base de données.
  *
- * La base est unifiée : tous les modules (PDO ou MySQLi) se connectent avec les
- * mêmes identifiants, lus dans le fichier .env (hors git) :
+ * La base est unifiée : tous les modules se connectent via shared/db.php
+ * (suite_pdo()) avec les mêmes identifiants, lus dans un fichier .env (hors git) :
  *
  *   DB_HOST=localhost
  *   DB_NAME=...
@@ -11,8 +11,11 @@
  *   DB_PASS=...
  *
  * Emplacement du .env : variable d'environnement SUITE_ENV_FILE si définie
- * (recommandé : un fichier hors du dossier web), sinon .env à la racine du projet.
+ * (obligatoire en production : un fichier HORS du dossier web, passé par
+ * fastcgi_param dans nginx), sinon .env à la racine du projet (dev local uniquement).
  * Définit les constantes DB_HOST / DB_NAME / DB_USER / DB_PASS.
+ * Le même fichier contient aussi les secrets des autres modules (ex. HelloAsso,
+ * identité de l'organisme pour les reçus) : voir donations/includes/env.php.
  * Aucun secret dans ce fichier : il est versionné.
  */
 if (!function_exists('suite_load_env_file')) {
@@ -37,8 +40,15 @@ if (!function_exists('suite_load_env_file')) {
     }
 }
 
+if (!function_exists('suite_env_path')) {
+    /** Chemin du fichier .env de la suite : SUITE_ENV_FILE, sinon .env à la racine du projet. */
+    function suite_env_path(): string {
+        return getenv('SUITE_ENV_FILE') ?: dirname(__DIR__) . '/.env';
+    }
+}
+
 if (!defined('DB_HOST')) {
-    $__path = getenv('SUITE_ENV_FILE') ?: dirname(__DIR__) . '/.env';
+    $__path = suite_env_path();
     $__env  = suite_load_env_file($__path);
     foreach (['DB_HOST', 'DB_NAME', 'DB_USER'] as $__k) {
         if (empty($__env[$__k])) {

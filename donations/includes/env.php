@@ -3,43 +3,14 @@ declare(strict_types=1);
 
 // donations/includes/env.php
 //
-// Petit chargeur de variables d'environnement (.env), copié du même
-// mécanisme que planning/includes/app.php. Le module "donations" est
-// désormais autonome (ne dépend plus de planning — base unifiée), il a
-// donc son propre fichier .env (donations/.env, gitignored comme les
-// autres .env de la suite — voir donations/.env.example).
+// Le module "donations" n'a plus de .env propre : ses variables (ORG_*,
+// HELLOASSO_*) vivent dans le fichier .env UNIQUE de la suite, celui qui
+// contient déjà les identifiants de base de données (voir
+// shared/db_credentials.php : variable SUITE_ENV_FILE, fichier hors du
+// dossier web en production). Même fichier, même chargeur, pour les pages
+// web comme pour le script en ligne de commande.
 
-if (!function_exists('load_env')) {
-    function load_env(string $path): void {
-        if (!is_readable($path)) return;
-
-        $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-        if (!$lines) return;
-
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if ($line === '' || str_starts_with($line, '#')) continue;
-
-            $pos = strpos($line, '=');
-            if ($pos === false) continue;
-
-            $key = trim(substr($line, 0, $pos));
-            $val = trim(substr($line, $pos + 1));
-
-            // enlève guillemets simples/doubles
-            if ((str_starts_with($val, '"') && str_ends_with($val, '"')) ||
-                (str_starts_with($val, "'") && str_ends_with($val, "'"))) {
-                $val = substr($val, 1, -1);
-            }
-
-            // ne pas écraser si déjà défini
-            if (getenv($key) === false) {
-                putenv("$key=$val");
-                $_ENV[$key] = $val;
-            }
-        }
-    }
-}
+require_once __DIR__ . '/../../shared/db_credentials.php';
 
 if (!function_exists('env')) {
     function env(string $key, mixed $default = null): mixed {
@@ -48,5 +19,11 @@ if (!function_exists('env')) {
     }
 }
 
-// Charge .env depuis la racine du module donations
-load_env(__DIR__ . '/../.env');
+// Expose les variables du .env de la suite (sans écraser une valeur déjà définie).
+foreach (suite_load_env_file(suite_env_path()) as $__k => $__v) {
+    if (getenv($__k) === false) {
+        putenv("$__k=$__v");
+        $_ENV[$__k] = $__v;
+    }
+}
+unset($__k, $__v);

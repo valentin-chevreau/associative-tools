@@ -23,6 +23,7 @@ declare(strict_types=1);
 // logique de "curseur" fragile.
 //
 // Crontab conseillé (toutes les heures, décalé pour éviter les pics :00) :
+//   SUITE_ENV_FILE=/chemin/vers/secrets/tools.env
 //   17 * * * * /usr/bin/php /chemin/vers/donations/cron/sync_helloasso_donations.php >> /var/log/helloasso_sync.log 2>&1
 
 if (PHP_SAPI !== 'cli') {
@@ -33,10 +34,10 @@ if (PHP_SAPI !== 'cli') {
 require_once __DIR__ . '/../includes/env.php';
 require_once __DIR__ . '/../includes/helloasso_client.php';
 
-// Connexion DB : on réutilise _bootstrap_get_pdo() de shared/bootstrap.php,
-// exactement comme les pages web du module — un seul endroit où les
-// identifiants de connexion sont définis (caisse/config.php,
-// logistique/config.php...), pas de duplication dans donations/.env.
+// Connexion DB : on réutilise _bootstrap_get_pdo() de shared/bootstrap.php
+// (donc suite_pdo(), identifiants dans le .env unique de la suite), exactement
+// comme les pages web du module. En ligne de commande, SUITE_ENV_FILE doit être
+// défini si le .env n'est pas à la racine du projet.
 //
 // bootstrap.php a été corrigé pour détecter le CLI (PHP_SAPI === 'cli') et
 // sauter dans ce cas la session HTTP et la protection globale par

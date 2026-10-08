@@ -6,10 +6,10 @@ declare(strict_types=1);
 // Identité de l'organisme utilisée sur les reçus fiscaux (dons manuels
 // uniquement — les dons HelloAsso n'ont pas de reçu généré ici).
 //
-// IMPORTANT (migration depuis planning) : renseigne ces valeurs dans
-// donations/.env (copie donations/.env.example en .env) avec les MÊMES
-// valeurs que l'ancien planning/config/config.php, pour que les reçus
-// gardent exactement les mêmes mentions légales (nom, RNA, SIRET, adresse).
+// Ces valeurs sont lues dans le .env unique de la suite (voir .env.example à
+// la racine du projet), avec les MÊMES valeurs que l'ancien
+// planning/config/config.php, pour que les reçus gardent exactement les mêmes
+// mentions légales (nom, RNA, SIRET, adresse).
 
 require_once __DIR__ . '/includes/env.php';
 
