@@ -1,7 +1,7 @@
 /*
  * Liste déroulante de la Suite (sans dépendance) — remplace le rendu natif des <select>.
- * - S'applique aux <select class="tu-input"> de 8 options ou plus (champ de recherche inclus)
- *   et à tout <select> portant la classe .tu-select-enhance ou l'attribut data-tu-select.
+ * - S'applique à tous les <select class="tu-input"> (ou .tu-select-enhance / data-tu-select) ;
+ *   le champ de recherche apparaît à partir de 8 options. Les filtres compacts (.tu-fsel) restent natifs.
  * - Le <select> d'origine reste dans le DOM (invisible) : il porte la valeur envoyée,
  *   les attributs required/disabled et reçoit un évènement « change » à chaque choix.
  * - Recherche insensible à la casse et aux accents ; ↑ ↓ Entrée Échap au clavier.
@@ -19,7 +19,7 @@
   function enhance(select) {
     if (select.dataset.tuSelectDone || select.multiple || select.size > 1) return;
     var many = select.options.length >= SEARCH_FROM;
-    if (!(many || select.classList.contains('tu-select-enhance') || select.hasAttribute('data-tu-select'))) return;
+    if (!(select.classList.contains('tu-input') || select.classList.contains('tu-select-enhance') || select.hasAttribute('data-tu-select'))) return;
     select.dataset.tuSelectDone = '1';
 
     var wrap = select.closest('.tu-select-wrap');
@@ -35,6 +35,8 @@
     var trigger = document.createElement('div');
     trigger.className = 'tu-input tu-select-trigger';
     trigger.tabIndex = 0;
+    trigger.style.cssText = select.style.cssText.replace(/(^|;)\s*(width|min-width|max-width|flex)[^;]*/g, '');
+    if (select.style.width) { wrap.style.width = select.style.width; wrap.style.display = 'inline-block'; }
     trigger.setAttribute('role', 'combobox');
     trigger.setAttribute('aria-haspopup', 'listbox');
     trigger.innerHTML = '<span class="tu-select-label"></span>'
