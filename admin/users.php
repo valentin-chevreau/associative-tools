@@ -60,15 +60,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $memberFunction = $memberFunctionRaw === '__custom' ? $memberFunctionCustom : $memberFunctionRaw;
         if (!in_array($presenceStatus, ['permanent', 'temporaire'], true)) $presenceStatus = 'permanent';
 
-        if ($firstName === '' || $lastName === '') {
-            $errors[] = "Le prénom et le nom sont obligatoires.";
+        if ($firstName === '') {
+            $errors[] = "Le prénom est obligatoire.";
         } else {
             $ins = $pdo->prepare("
                 INSERT INTO users (first_name, last_name, email, phone, member_function, presence_status, is_active)
                 VALUES (?, ?, ?, ?, ?, ?, 1)
             ");
             $ins->execute([
-                $firstName, $lastName,
+                $firstName,
+                $lastName, // colonne NOT NULL en base : jamais null, une chaîne vide au pire
                 $email !== '' ? $email : null,
                 $phone !== '' ? $phone : null,
                 $memberFunction !== '' ? $memberFunction : null,
@@ -556,8 +557,8 @@ function switchUserTab(tab) {
             <input type="text" name="first_name" class="tu-input" required>
           </div>
           <div class="tu-form-field">
-            <span class="tu-lbl">Nom *</span>
-            <input type="text" name="last_name" class="tu-input" required>
+            <span class="tu-lbl">Nom</span>
+            <input type="text" name="last_name" class="tu-input">
           </div>
         </div>
         <div class="tu-form-field" style="margin-top:12px;">
