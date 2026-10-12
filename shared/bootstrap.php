@@ -412,7 +412,7 @@ if (!function_exists('suite_module_from_path')) {
 
 if (!defined('SITE_BACKOFFICE_URL')) {
     // Adresse du backoffice du site internet grand public (lien de la sidebar).
-    define('SITE_BACKOFFICE_URL', 'https://touraine-ukraine.fr/bureau/');
+    define('SITE_BACKOFFICE_URL', 'https://touraine-ukraine.fr/admin/site');
 }
 
 /**
