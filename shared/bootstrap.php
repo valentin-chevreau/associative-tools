@@ -481,6 +481,10 @@ if (!function_exists('admin_login_with_code')) {
 
         audit_log('auth', 'login', 'volunteer', (int)$volunteer['id'], $_SESSION['volunteer_name'], ['role' => $role]);
 
+        // Alerte e-mail aux super admins si cet utilisateur est surveillé (admin/login_alerts.php).
+        require_once __DIR__ . '/login_alerts.php';
+        suite_login_alert_after_login((int)$volunteer['id'], (string)$_SESSION['volunteer_name'], $role);
+
         return true;
     }
 }

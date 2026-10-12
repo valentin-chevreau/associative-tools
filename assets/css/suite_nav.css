@@ -1063,6 +1063,9 @@ body.tu-sb-open .tu-sb-close { display: flex; }
   /* La caisse place son .app à l'intérieur du .tu-main,
      on s'assure qu'il prend tout l'espace disponible */
   min-height: 100vh;
+  /* « margin:auto » désactive l'étirement dans la colonne flex : sans largeur explicite, .app se cale
+     sur son contenu le plus large (tableaux) et fait déborder toute la page sur mobile. */
+  width: 100%;
 }
 
 /* Quand sidebar ouverte sur mobile : bloquer le scroll du body */
