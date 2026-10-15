@@ -52,6 +52,18 @@ $terrainItems = array_values(array_filter($items, fn($it) => ($it['group'] ?? 't
 $gestionItems = array_values(array_filter($items, fn($it) => ($it['group'] ?? '') === 'gestion'));
 $showBackoffice = module_access('site_backoffice');
 
+// Tuiles Administration : mêmes conditions que la sidebar.
+$portalRole   = function_exists('current_role') ? current_role() : '';
+$portalSuper  = ($portalRole === 'super_admin');
+$adminTiles = [
+    ['Utilisateurs',          '👥', 'Comptes, rôles et accès',                 $base . '/admin/users.php',        false, true],
+    ['Journal d\'audit',      '📜', 'Historique des actions sensibles',        $base . '/admin/audit_log.php',    false, $portalSuper],
+    ['Alertes de connexion',  '🔔', 'E-mails à chaque connexion',              $base . '/admin/login_alerts.php', false, $portalSuper],
+    ['Migrations SQL',        '🗄️', 'Mises à jour de la base de données',      $base . '/admin/migrations.php',   false, $portalSuper],
+    ['Backoffice du site',    '🌐', 'Gérer le site internet grand public',     SITE_BACKOFFICE_URL,               true,  $showBackoffice],
+];
+$adminTiles = array_values(array_filter($adminTiles, fn($t) => $t[5]));
+
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -110,15 +122,17 @@ $showBackoffice = module_access('site_backoffice');
       </div>
     <?php endif; ?>
 
-    <?php if ($showBackoffice): ?>
+    <?php if ($adminTiles): ?>
       <div class="tu-portal-sec">Administration</div>
       <div class="tu-portal-grid">
-        <a href="<?= h(SITE_BACKOFFICE_URL) ?>" target="_blank" rel="noopener" class="tu-portal-card tu-portal-card-admin">
-          <div class="tu-pc-ico">🌐</div>
-          <div class="tu-pc-name">Backoffice du site</div>
-          <div class="tu-pc-desc">Gérer le site internet grand public</div>
-          <div class="tu-pc-foot"><span class="tu-pc-link">Ouvrir ↗</span></div>
-        </a>
+        <?php foreach ($adminTiles as [$tLabel, $tIco, $tDesc, $tHref, $tExt]): ?>
+          <a href="<?= h($tHref) ?>"<?= $tExt ? ' target="_blank" rel="noopener"' : '' ?> class="tu-portal-card tu-portal-card-admin">
+            <div class="tu-pc-ico"><?= $tIco ?></div>
+            <div class="tu-pc-name"><?= h($tLabel) ?></div>
+            <div class="tu-pc-desc"><?= h($tDesc) ?></div>
+            <div class="tu-pc-foot"><span class="tu-pc-link"><?= $tExt ? 'Ouvrir ↗' : 'Ouvrir →' ?></span></div>
+          </a>
+        <?php endforeach; ?>
       </div>
     <?php endif; ?>
 
