@@ -59,7 +59,7 @@ a.btn.btn-primary{color:#fff}
 .flash{margin:0 0 14px;padding:10px 14px;border-radius:12px;font-size:13.5px;font-weight:600}
 .flash.ok{background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0}
 .flash.ko{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
-.sigimg{max-width:220px;max-height:90px;display:block;margin-top:6px}
+.sigimg{max-width:150px;max-height:64px;display:block;margin-top:6px}
 .mailnote{color:var(--mut);font-size:12px;margin-top:10px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
 @media (max-width:720px){.grid{grid-template-columns:1fr}}
@@ -153,10 +153,10 @@ a.btn.btn-primary{color:#fff}
       <?php if ($d['signatory']):
           $sp = $d['signatory']['path'];
           $mime = strtolower(pathinfo($sp, PATHINFO_EXTENSION)) === 'png' ? 'image/png' : 'image/jpeg'; ?>
+        <br><strong><?= h(trim($d['signatory']['name'] . ', ' . $d['signatory']['role'], ' ,')) ?></strong>
         <img class="sigimg" alt="Signature" src="data:<?= $mime ?>;base64,<?= base64_encode((string)file_get_contents($sp)) ?>">
-        <strong><?= h($d['signatory']['name']) ?></strong><br><?= h($d['signatory']['role']) ?>
       <?php else: ?>
-        <br><br><br>Le Trésorier
+        <br>Le Trésorier
       <?php endif; ?>
     </div>
   </div>

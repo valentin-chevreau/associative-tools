@@ -149,23 +149,16 @@ final class ReceiptPdf extends tFPDF
         $this->Cell(170, 5, "Pour l'association,", 0, 1);
 
         $sig = $d['signatory'];
-        $blockY = $this->GetY() + 1;
+        $this->SetX(20);
         if ($sig) {
-            [$iw, $ih] = getimagesize($sig['path']) ?: [1, 1];
-            $maxW = 55.0; $maxH = 24.0;
-            $scale = min($maxW / $iw, $maxH / $ih);
-            $this->Image($sig['path'], 20, $blockY, $iw * $scale, $ih * $scale);
-            $this->SetY($blockY + $maxH + 1);
+            // « Prénom NOM, fonction » puis la signature dessous
             $this->SetFont('LS', 'B', 9.5);
-            $this->SetX(20);
-            $this->Cell(170, 4.8, (string)$sig['name'], 0, 1);
-            $this->SetFont('LS', '', 9);
-            $this->SetX(20);
-            $this->Cell(170, 4.8, (string)$sig['role'], 0, 1);
+            $this->Cell(170, 5, trim((string)$sig['name'] . ', ' . (string)$sig['role'], ' ,'), 0, 1);
+            [$iw, $ih] = getimagesize($sig['path']) ?: [1, 1];
+            $scale = min(40.0 / $iw, 17.0 / $ih);
+            $this->Image($sig['path'], 20, $this->GetY() + 1, $iw * $scale, $ih * $scale);
         } else {
-            $this->SetY($blockY + 9);
             $this->SetFont('LS', '', 9);
-            $this->SetX(20);
             $this->Cell(170, 5, 'Le Trésorier', 0, 1);
         }
     }
