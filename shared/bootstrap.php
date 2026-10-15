@@ -554,21 +554,51 @@ require_once __DIR__ . '/audit.php';
 /**
  * Formatage lisible d'un numéro de téléphone : groupe les chiffres par 2
  * (ex: "0766512146" -> "07 66 51 21 46"). Ignore tout ce qui n'est pas un
- * chiffre (espaces, points, indicatif "+33" conservé tel quel en tête de
- * groupe s'il est présent) ; ne modifie jamais la valeur stockée en base,
- * uniquement l'affichage.
+ * chiffre (espaces, points) ; "+33766512146" -> "+33 7 66 51 21 46" ; les
+ * autres indicatifs sont groupés par 2. Même règle que assets/js/tu_phone.js
+ * (saisie) ; +380 (Ukraine) : "+380 50 123 45 67". Ne modifie jamais la valeur stockée en base, uniquement l'affichage.
  */
 if (!function_exists('format_phone')) {
     function format_phone(?string $phone): string {
         $phone = trim((string)$phone);
         if ($phone === '') return '';
 
-        $hasPlus = str_starts_with($phone, '+');
-        $digits  = preg_replace('/\D+/', '', $phone);
+        $plus   = str_starts_with($phone, '+');
+        $digits = preg_replace('/\D+/', '', $phone);
         if ($digits === '') return '';
 
+        if (!$plus && str_starts_with($digits, '00')) {
+            $plus   = true;
+            $digits = substr($digits, 2);
+        }
+
+        // Indicatif français : +33 6 12 34 56 78 (le « 0 » après +33 est ignoré)
+        if ($plus && str_starts_with($digits, '33')) {
+            $rest = substr($digits, 2);
+            if (str_starts_with($rest, '0')) $rest = substr($rest, 1);
+            if ($rest === '') return '+33';
+            $tail = substr($rest, 1);
+            return '+33 ' . $rest[0] . ($tail !== '' ? ' ' . trim(chunk_split($tail, 2, ' ')) : '');
+        }
+
+        // Indicatif ukrainien : +380 50 123 45 67
+        if ($plus && str_starts_with($digits, '380')) {
+            $rest = substr($digits, 3);
+            $out  = '+380';
+            if ($rest !== '') {
+                $out .= ' ' . substr($rest, 0, 2);
+                $tail = substr($rest, 2);
+                if ($tail !== '') {
+                    $out .= ' ' . substr($tail, 0, 3);
+                    $end = substr($tail, 3);
+                    if ($end !== '') $out .= ' ' . trim(chunk_split($end, 2, ' '));
+                }
+            }
+            return $out;
+        }
+
         $grouped = trim(chunk_split($digits, 2, ' '));
-        return $hasPlus ? '+' . $grouped : $grouped;
+        return $plus ? '+' . $grouped : $grouped;
     }
 }
 

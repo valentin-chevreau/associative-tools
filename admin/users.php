@@ -32,13 +32,6 @@ function genAccessCode(): string {
     return str_pad((string)random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
 }
 
-function formatPhone(?string $phone): string {
-    if ($phone === null || $phone === '') return '';
-    $digits = preg_replace('/\D/', '', $phone);
-    if ($digits === '') return $phone;
-    return trim(implode(' ', str_split($digits, 2)));
-}
-
 $errors = [];
 $success = null;
 $revealedCode = null;
@@ -344,7 +337,7 @@ suite_nav_render('users', '');
 
   <!-- Filtres -->
   <div class="tu-card" style="padding:16px;margin-bottom:16px;">
-    <form method="get" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+    <form method="get" class="tu-form-bar">
       <div class="tu-form-field" style="flex:1;min-width:220px;">
         <span class="tu-lbl">Rechercher</span>
         <input type="text" name="q" class="tu-input" placeholder="Nom, prénom, email…" value="<?= h($search) ?>">
@@ -388,7 +381,7 @@ suite_nav_render('users', '');
         return;
       }
       ?>
-      <table class="tu-tbl">
+      <table class="tu-tbl tu-tbl-resp">
         <thead>
           <tr>
             <th>Bénévole</th>
@@ -416,70 +409,79 @@ suite_nav_render('users', '');
             };
           ?>
             <tr style="<?= !$isActive ? 'opacity:.5;' : '' ?>">
-              <td>
+              <td class="tu-td-main">
                 <div style="font-weight:700;font-size:13.5px;"><?= h($fullName) ?></div>
-                <div style="font-size:11.5px;color:var(--tu-ink-300);">
-                  <?= $v['email'] ? h($v['email']) : '' ?>
-                  <?php if ($v['email'] && $v['phone']): ?> · <?php endif; ?>
-                  <?= $v['phone'] ? h(formatPhone($v['phone'])) : '' ?>
-                </div>
+                <?php if ($v['email']): ?><div style="font-size:11.5px;color:var(--tu-ink-300);"><?= h($v['email']) ?></div><?php endif; ?>
+                <?php if ($v['phone']): ?><div class="tu-phone" style="font-size:11.5px;color:var(--tu-ink-300);"><?= h(format_phone($v['phone'])) ?></div><?php endif; ?>
               </td>
-              <td style="font-size:12.5px;">
+              <td data-label="Fonction" style="font-size:12.5px;">
                 <?= h(member_function_label($v['member_function'])) ?>
                 <button type="button" onclick='openEditProfileModal(<?= (int)$v['id'] ?>, <?= json_encode($v['member_function'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= json_encode($v['presence_status'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= json_encode($fullName, JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= json_encode($v['first_name'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= json_encode($v['last_name'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= json_encode($v['email'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= json_encode($v['phone'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'
                         style="background:none;border:none;color:var(--tu-ink-300);cursor:pointer;font-size:11px;text-decoration:underline;padding:0;margin-left:4px;">éditer</button>
               </td>
-              <td>
+              <td data-label="Rôle admin">
                 <?php if ($hasAccess): ?>
                   <span class="tu-bdg <?= $roleBadgeClass ?>"><?= h($roleLabel) ?></span>
                 <?php else: ?>
                   <span style="font-size:12px;color:var(--tu-ink-200);">Aucun</span>
                 <?php endif; ?>
               </td>
-              <td style="font-size:12px;color:var(--tu-ink-300);">
+              <td data-label="Dernière connexion" style="font-size:12px;color:var(--tu-ink-300);">
                 <?= $v['last_login_at'] ? h(date('d/m/Y H:i', strtotime($v['last_login_at']))) : '—' ?>
               </td>
-              <td style="text-align:right;">
-                <div class="tu-tbl-acts" style="justify-content:flex-end;flex-wrap:wrap;">
+              <td class="tu-td-acts" style="text-align:right;">
+                <div class="tu-tbl-acts">
                   <?php if (!$hasAccess && $isActive): ?>
                     <button type="button" class="tu-btn tu-btn-p tu-btn-xs" onclick='openGrantModal(<?= (int)$v['id'] ?>, <?= json_encode($fullName, JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>Donner accès</button>
-                  <?php elseif ($hasAccess): ?>
-                    <form method="post" style="display:inline;">
-                      <input type="hidden" name="action" value="change_role">
-                      <input type="hidden" name="volunteer_id" value="<?= (int)$v['id'] ?>">
-                      <select name="role" class="tu-fsel" style="font-size:11px;" onchange="this.form.submit()">
-                        <option value="admin" <?= $v['role']==='admin'?'selected':'' ?>>Admin</option>
-                        <option value="admin_plus" <?= $v['role']==='admin_plus'?'selected':'' ?>>Admin+</option>
-                        <?php if (in_array('super_admin', $allowedRoles, true)): ?>
-                          <option value="super_admin" <?= $v['role']==='super_admin'?'selected':'' ?>>Super admin</option>
-                        <?php endif; ?>
-                      </select>
-                    </form>
-                    <form method="post" style="display:inline;" onsubmit="return confirm('Régénérer le code de <?= h(addslashes($fullName)) ?> ?');">
-                      <input type="hidden" name="action" value="regenerate_code">
-                      <input type="hidden" name="volunteer_id" value="<?= (int)$v['id'] ?>">
-                      <button type="submit" class="tu-btn tu-btn-s tu-btn-xs">Nouveau code</button>
-                    </form>
-                    <form method="post" style="display:inline;" onsubmit="return confirm('Révoquer l\'accès admin de <?= h(addslashes($fullName)) ?> ?');">
-                      <input type="hidden" name="action" value="revoke_access">
-                      <input type="hidden" name="volunteer_id" value="<?= (int)$v['id'] ?>">
-                      <button type="submit" class="tu-btn tu-btn-d tu-btn-xs">Révoquer</button>
-                    </form>
                   <?php endif; ?>
-                  <form method="post" style="display:inline;" onsubmit="return confirm('<?= $isActive ? 'Désactiver' : 'Réactiver' ?> le compte de <?= h(addslashes($fullName)) ?> ?');">
-                    <input type="hidden" name="action" value="toggle_active">
-                    <input type="hidden" name="volunteer_id" value="<?= (int)$v['id'] ?>">
-                    <input type="hidden" name="new_status" value="<?= $isActive ? 0 : 1 ?>">
-                    <button type="submit" class="tu-btn <?= $isActive ? 'tu-btn-d' : 'tu-btn-s' ?> tu-btn-xs"><?= $isActive ? 'Désactiver' : 'Réactiver' ?></button>
-                  </form>
-                  <?php if (is_super_admin() && (int)$v['id'] !== (int)current_volunteer_id()): ?>
-                    <a href="permissions.php?user=<?= (int)$v['id'] ?>" class="tu-btn tu-btn-s tu-btn-xs" title="Droits particuliers">Droits</a>
-                    <form method="post" style="display:inline;" onsubmit="return confirm('Supprimer <?= h(addslashes($fullName)) ?> ?\n\nLe compte disparaît des listes et perd tout accès, mais son historique (inscriptions au planning, présences, journal) est conservé.');">
-                      <input type="hidden" name="action" value="delete_user">
-                      <input type="hidden" name="volunteer_id" value="<?= (int)$v['id'] ?>">
-                      <button type="submit" class="tu-btn tu-btn-d tu-btn-xs">Supprimer</button>
-                    </form>
-                  <?php endif; ?>
+                  <div class="tu-kebab">
+                    <button type="button" class="tu-kebab-btn" aria-haspopup="menu" aria-expanded="false" aria-label="Actions pour <?= h($fullName) ?>">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg>
+                    </button>
+                    <div class="tu-kebab-menu" role="menu">
+                      <?php if ($hasAccess): ?>
+                        <div class="tu-kebab-lbl">Rôle admin</div>
+                        <?php foreach (['admin' => 'Admin', 'admin_plus' => 'Admin+', 'super_admin' => 'Super admin'] as $roleKey => $roleName):
+                            if (!in_array($roleKey, $allowedRoles, true)) continue;
+                            $isCurrentRole = $v['role'] === $roleKey; ?>
+                          <form method="post">
+                            <input type="hidden" name="action" value="change_role">
+                            <input type="hidden" name="volunteer_id" value="<?= (int)$v['id'] ?>">
+                            <input type="hidden" name="role" value="<?= h($roleKey) ?>">
+                            <button type="<?= $isCurrentRole ? 'button' : 'submit' ?>" role="menuitem" class="tu-kebab-item"<?= $isCurrentRole ? ' aria-current="true"' : '' ?>><?= h($roleName) ?></button>
+                          </form>
+                        <?php endforeach; ?>
+                        <div class="tu-kebab-sep"></div>
+                        <form method="post" onsubmit="return confirm('Régénérer le code de <?= h(addslashes($fullName)) ?> ?');">
+                          <input type="hidden" name="action" value="regenerate_code">
+                          <input type="hidden" name="volunteer_id" value="<?= (int)$v['id'] ?>">
+                          <button type="submit" role="menuitem" class="tu-kebab-item">Nouveau code</button>
+                        </form>
+                        <form method="post" onsubmit="return confirm('Révoquer l\'accès admin de <?= h(addslashes($fullName)) ?> ?');">
+                          <input type="hidden" name="action" value="revoke_access">
+                          <input type="hidden" name="volunteer_id" value="<?= (int)$v['id'] ?>">
+                          <button type="submit" role="menuitem" class="tu-kebab-item danger">Révoquer l'accès</button>
+                        </form>
+                        <div class="tu-kebab-sep"></div>
+                      <?php endif; ?>
+                      <?php if (is_super_admin() && (int)$v['id'] !== (int)current_volunteer_id()): ?>
+                        <a href="permissions.php?user=<?= (int)$v['id'] ?>" role="menuitem" class="tu-kebab-item">Droits particuliers</a>
+                      <?php endif; ?>
+                      <form method="post" onsubmit="return confirm('<?= $isActive ? 'Désactiver' : 'Réactiver' ?> le compte de <?= h(addslashes($fullName)) ?> ?');">
+                        <input type="hidden" name="action" value="toggle_active">
+                        <input type="hidden" name="volunteer_id" value="<?= (int)$v['id'] ?>">
+                        <input type="hidden" name="new_status" value="<?= $isActive ? 0 : 1 ?>">
+                        <button type="submit" role="menuitem" class="tu-kebab-item<?= $isActive ? ' danger' : '' ?>"><?= $isActive ? 'Désactiver le compte' : 'Réactiver le compte' ?></button>
+                      </form>
+                      <?php if (is_super_admin() && (int)$v['id'] !== (int)current_volunteer_id()): ?>
+                        <form method="post" onsubmit="return confirm('Supprimer <?= h(addslashes($fullName)) ?> ?\n\nLe compte disparaît des listes et perd tout accès, mais son historique (inscriptions au planning, présences, journal) est conservé.');">
+                          <input type="hidden" name="action" value="delete_user">
+                          <input type="hidden" name="volunteer_id" value="<?= (int)$v['id'] ?>">
+                          <button type="submit" role="menuitem" class="tu-kebab-item danger">Supprimer</button>
+                        </form>
+                      <?php endif; ?>
+                    </div>
+                  </div>
                 </div>
               </td>
             </tr>
@@ -538,7 +540,7 @@ function switchUserTab(tab) {
         </div>
         <div class="tu-form-field" style="margin-top:12px;">
           <span class="tu-lbl">Téléphone</span>
-          <input type="text" name="phone" class="tu-input">
+          <input type="tel" name="phone" class="tu-input">
         </div>
         <div class="tu-form-field" style="margin-top:12px;">
           <span class="tu-lbl">Fonction</span>
@@ -598,7 +600,7 @@ function switchUserTab(tab) {
         </div>
         <div class="tu-form-field" style="margin-top:12px;">
           <span class="tu-lbl">Téléphone</span>
-          <input type="text" name="phone" id="editPhone" class="tu-input">
+          <input type="tel" name="phone" id="editPhone" class="tu-input">
         </div>
         <div class="tu-form-field" style="margin-top:12px;">
           <span class="tu-lbl">Fonction</span>
@@ -682,6 +684,7 @@ function openEditProfileModal(id, currentFunction, currentStatus, name, firstNam
   document.getElementById('editLastName').value = lastName || '';
   document.getElementById('editEmail').value = email || '';
   document.getElementById('editPhone').value = phone || '';
+  document.getElementById('editPhone').dispatchEvent(new Event('input'));
 
   const fnSelect = document.getElementById('editFunctionSelect');
   const fnCustom = document.getElementById('editFunctionCustom');

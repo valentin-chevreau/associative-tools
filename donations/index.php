@@ -220,6 +220,14 @@ $info = [
 ];
 $msg = null;
 
+// Résultat d'un envoi de reçu par e-mail (donations/receipt_send.php)
+if (!empty($_SESSION['receipt_flash']) && is_array($_SESSION['receipt_flash'])) {
+    $rf = $_SESSION['receipt_flash'];
+    unset($_SESSION['receipt_flash']);
+    if (!empty($rf['ok'])) $msg = (string)($rf['text'] ?? '');
+    else $info['errors'][] = (string)($rf['text'] ?? 'Envoi impossible.');
+}
+
 // Vérif table
 $tableOk = false;
 try {
@@ -910,7 +918,7 @@ elseif (isset($_POST['do_helloasso_sync_now'])) $activeTab = 'sync';
     </div>
   <?php endif; ?>
 
-  <form method="post" style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+  <form method="post" class="tu-form-bar" style="margin-top:16px;">
     <input type="hidden" name="do_helloasso_sync_now" value="1">
     <div class="tu-form-field" style="min-width:220px;">
       <span class="tu-lbl">Fenêtre</span>
@@ -920,12 +928,12 @@ elseif (isset($_POST['do_helloasso_sync_now'])) $activeTab = 'sync';
         <option value="400">400 derniers jours (backfill initial)</option>
       </select>
     </div>
-    <div class="tu-form-field" style="min-width:200px;">
+    <div class="tu-form-field" style="flex:1 1 280px;min-width:200px;max-width:520px;">
       <span class="tu-lbl">Date de début personnalisée</span>
       <input class="tu-input" type="date" name="sync_from_date" value="">
       <div class="tu-hint">Remplace la fenêtre ci-dessus si renseignée — ex: 01/01/2022 pour tout reprendre depuis la création de l'association.</div>
     </div>
-    <label style="display:inline-flex;gap:8px;align-items:center;font-size:13px;padding-bottom:11px;">
+    <label class="tu-form-check">
       <input type="checkbox" name="sync_dry_run" value="1" checked>
       Simulation (ne rien écrire en base)
     </label>
@@ -1001,7 +1009,7 @@ elseif (isset($_POST['do_helloasso_sync_now'])) $activeTab = 'sync';
     </div>
 
     <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;margin-top:6px;">
-      <label style="display:inline-flex;gap:8px;align-items:center;font-size:13px;font-weight:700;">
+      <label class="tu-form-check">
         <input type="checkbox" name="receipt_eligible" value="1" checked>
         Don éligible au reçu fiscal
       </label>
@@ -1101,7 +1109,7 @@ elseif (isset($_POST['do_helloasso_sync_now'])) $activeTab = 'sync';
       <input class="tu-input" type="file" name="csv_file" accept=".csv,text/csv" required>
     </div>
     <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;">
-      <label style="display:inline-flex;gap:8px;align-items:center;font-size:13px;">
+      <label class="tu-form-check">
         <input type="checkbox" name="dry_run" value="1" checked>
         Simulation (ne rien écrire en base)
       </label>
@@ -1201,6 +1209,14 @@ elseif (isset($_POST['do_helloasso_sync_now'])) $activeTab = 'sync';
                       <input type="hidden" name="do_generate_receipt" value="1">
                       <input type="hidden" name="donation_id" value="<?= (int)$r['id'] ?>">
                       <button type="submit" class="tu-btn tu-btn-t tu-btn-xs">Générer reçu</button>
+                    </form>
+                  <?php endif; ?>
+                  <?php if (!empty($r['receipt_number']) && filter_var($email, FILTER_VALIDATE_EMAIL)): ?>
+                    <form method="post" action="<?= h($base) ?>/donations/receipt_send.php" style="display:inline;" onsubmit="return confirm('Envoyer le reçu <?= h($r['receipt_number']) ?> par e-mail à <?= h($email) ?> ?');">
+                      <input type="hidden" name="donation_id" value="<?= (int)$r['id'] ?>">
+                      <input type="hidden" name="return" value="list">
+                      <input type="hidden" name="year" value="<?= (int)$year ?>">
+                      <button type="submit" class="tu-btn tu-btn-xs">Envoyer par email</button>
                     </form>
                   <?php endif; ?>
                   <form method="post" style="display:inline;" onsubmit="return confirm('Supprimer ce don manuel ?');">

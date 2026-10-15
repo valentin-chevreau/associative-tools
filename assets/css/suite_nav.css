@@ -655,6 +655,23 @@ body.tu-v2 *, body.tu-v2 *::before, body.tu-v2 *::after {
 .tu-fg-3 { grid-column: span 3; }
 .tu-form-field { display: flex; flex-direction: column; }
 
+/* Barre de formulaire en ligne (filtres, actions) :
+   tous les champs démarrent à la même hauteur, quel que soit le texte d'aide
+   placé sous un champ ; les boutons / cases à cocher s'alignent sur les champs. */
+.tu-form-bar { display: flex; flex-wrap: wrap; gap: 12px 14px; align-items: flex-start; }
+.tu-form-bar .tu-lbl { line-height: 16px; }
+.tu-form-bar .tu-input { box-sizing: border-box; height: 38px; }
+.tu-form-bar > .tu-btn { box-sizing: border-box; height: 38px; margin-top: 20px; justify-content: center; }
+.tu-form-bar > .tu-form-check,
+.tu-form-bar > .tu-form-note { margin-top: 20px; min-height: 38px; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+.tu-form-bar > .tu-form-check { cursor: pointer; }
+.tu-form-bar > .tu-form-note { font-size: 12px; color: var(--tu-ink-300); }
+@media (max-width: 640px) {
+  .tu-form-bar > .tu-form-field { flex: 1 1 100%; min-width: 0 !important; max-width: none !important; width: auto !important; }
+  .tu-form-bar > .tu-btn { flex: 1 1 100%; }
+  .tu-form-bar > .tu-btn, .tu-form-bar > .tu-form-check, .tu-form-bar > .tu-form-note { margin-top: 0; }
+}
+
 .tu-sec-div {
   display: flex; align-items: center; gap: 12px;
   margin: 20px 0 14px;
@@ -1266,3 +1283,106 @@ body.tu-sb-open .tu-hamburger {
 .tu-seg { display: inline-flex; background: var(--tu-sand-100); border-radius: 999px; padding: 3px; gap: 2px; }
 .tu-seg button { border: 0; background: none; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--tu-ink-300); padding: 5px 14px; border-radius: 999px; cursor: pointer; }
 .tu-seg button.on { background: #fff; color: var(--tu-ink-900); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+
+/* ═══════════════════════════════════════
+   CASES À COCHER / BOUTONS RADIO
+   Rendu unique pour toute la Suite (remplace le rendu natif du navigateur).
+   :where() = spécificité nulle : un style local (.tu-row input, largeur
+   inline, etc.) garde toujours la main.
+═══════════════════════════════════════ */
+:where(input[type=checkbox], input[type=radio]) {
+  -webkit-appearance: none; appearance: none;
+  box-sizing: border-box;
+  width: 18px; height: 18px; margin: 0;
+  flex-shrink: 0;
+  vertical-align: middle;
+  background: var(--tu-white, #fff);
+  border: 1.5px solid var(--tu-ink-200, #c9bfae);
+  cursor: pointer;
+  transition: background-color .12s, border-color .12s, box-shadow .12s;
+}
+:where(input[type=checkbox]) { border-radius: 5px; }
+:where(input[type=radio])    { border-radius: 50%; }
+:where(input[type=checkbox]):checked {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.6 8.4l2.9 2.9 5.9-6.2' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-size: 100% 100%;
+}
+:where(input[type=radio]):checked {
+  background-image: radial-gradient(circle, #fff 0 32%, transparent 36%);
+}
+:where(input[type=checkbox], input[type=radio]):checked {
+  background-color: var(--tu-amber-500, #d4732a); border-color: var(--tu-amber-500, #d4732a);
+}
+:where(input[type=checkbox], input[type=radio]):hover:not(:disabled) { border-color: var(--tu-amber-400, #e8924a); }
+:where(input[type=checkbox], input[type=radio]):focus-visible {
+  outline: none; box-shadow: 0 0 0 3px rgba(232,146,74,.28);
+}
+:where(input[type=checkbox], input[type=radio]):disabled { opacity: .45; cursor: not-allowed; }
+.tu-danger-zone input[type=checkbox]:checked { background-color: var(--tu-red-main); border-color: var(--tu-red-main); }
+
+/* Libellé cliquable avec case à cocher : <label class="tu-form-check"> (voir aussi .tu-form-bar) */
+.tu-form-check { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+
+/* ═══════════════════════════════════════
+   MENU « 3 POINTS » (actions de ligne) — assets/js/tu_menu.js
+   <div class="tu-kebab">
+     <button type="button" class="tu-kebab-btn" aria-label="Actions">…</button>
+     <div class="tu-kebab-menu" role="menu">
+       <div class="tu-kebab-lbl">Titre</div>
+       <a class="tu-kebab-item" href="…">Lien</a>
+       <form method="post"><button class="tu-kebab-item danger">Action</button></form>
+       <div class="tu-kebab-sep"></div>
+     </div>
+   </div>
+═══════════════════════════════════════ */
+.tu-kebab { position: relative; display: inline-block; }
+.tu-kebab-btn {
+  width: 34px; height: 34px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1.5px solid transparent; border-radius: 10px;
+  background: transparent; color: var(--tu-ink-500); cursor: pointer;
+  transition: background-color .12s, border-color .12s;
+}
+.tu-kebab-btn:hover, .tu-kebab-btn[aria-expanded="true"] { background: var(--tu-sand-50); border-color: var(--tu-ink-100); }
+.tu-kebab-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(232,146,74,.28); }
+.tu-kebab-btn svg { width: 18px; height: 18px; fill: currentColor; pointer-events: none; }
+.tu-kebab-menu {
+  position: fixed; z-index: 1500; display: none;
+  min-width: 210px; max-width: calc(100vw - 16px);
+  padding: 6px; background: var(--tu-white, #fff);
+  border: 1px solid var(--tu-ink-100); border-radius: 12px;
+  box-shadow: 0 14px 34px rgba(26,21,16,.18);
+}
+.tu-kebab-menu.open { display: block; }
+.tu-kebab-menu form { margin: 0; }
+.tu-kebab-item {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  box-sizing: border-box; padding: 10px 12px; border: 0; border-radius: 8px;
+  background: none; font: inherit; font-size: 13px; font-weight: 600;
+  color: var(--tu-ink-700); text-align: left; text-decoration: none; cursor: pointer;
+}
+.tu-kebab-item:hover, .tu-kebab-item:focus-visible { background: var(--tu-sand-50); outline: none; }
+.tu-kebab-item.danger { color: var(--tu-red-main); }
+.tu-kebab-item.danger:hover, .tu-kebab-item.danger:focus-visible { background: var(--tu-red-soft); }
+.tu-kebab-item[aria-current="true"] { color: var(--tu-ink-900); cursor: default; }
+.tu-kebab-item[aria-current="true"]::after { content: "✓"; margin-left: auto; color: var(--tu-amber-600); font-weight: 800; }
+.tu-kebab-sep { height: 1px; margin: 6px 4px; background: var(--tu-ink-100); }
+.tu-kebab-lbl { padding: 6px 12px 4px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--tu-ink-300); }
+
+/* Numéro de téléphone : jamais coupé au milieu */
+.tu-phone { white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* Tableau → cartes sur mobile : <table class="tu-tbl tu-tbl-resp">, <td data-label="…">,
+   <td class="tu-td-acts"> pour la colonne d'actions (épinglée en haut à droite de la carte). */
+@media (max-width: 700px) {
+  .tu-card > table.tu-tbl-resp, .tu-card > div > table.tu-tbl-resp, .tu-card > form > table.tu-tbl-resp { min-width: 0; }
+  .tu-tbl-resp thead { display: none; }
+  .tu-tbl-resp, .tu-tbl-resp tbody, .tu-tbl-resp tr, .tu-tbl-resp td { display: block; width: 100%; box-sizing: border-box; }
+  .tu-tbl-resp tr { position: relative; padding: 12px 14px; border-bottom: 1px solid var(--tu-ink-100); }
+  .tu-tbl-resp tr:last-child { border-bottom: none; }
+  .tu-tbl-resp td { padding: 3px 0 !important; border: 0 !important; }
+  .tu-tbl-resp td[data-label] { display: flex; justify-content: space-between; align-items: center; gap: 12px; text-align: right; }
+  .tu-tbl-resp td[data-label]::before { content: attr(data-label); font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--tu-ink-300); text-align: left; }
+  .tu-tbl-resp td.tu-td-main { padding-right: 56px !important; }
+  .tu-tbl-resp td.tu-td-acts { position: absolute; top: 8px; right: 8px; width: auto; padding: 0 !important; }
+}

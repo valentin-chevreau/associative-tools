@@ -65,7 +65,7 @@ if (!function_exists('suite_mail_encode_header')) {
 
 if (!function_exists('suite_mail_send')) {
     /** @return ?string null = envoyé ; sinon message d'erreur */
-    function suite_mail_send(string $to, string $subject, string $body, ?string $html = null): ?string {
+    function suite_mail_send(string $to, string $subject, string $body, ?string $html = null, array $attachments = []): ?string {
         $cfg = suite_mail_config();
         $to = suite_mail_header_safe($to);
         if ($cfg['from'] === '') return "MAIL_FROM n'est pas configuré dans le .env de la suite.";
@@ -85,16 +85,31 @@ if (!function_exists('suite_mail_send')) {
         ];
         $b64 = static fn(string $t): string => chunk_split(base64_encode($t), 76, "\r\n");
         if ($html === null) {
-            $headers[] = 'Content-Type: text/plain; charset=UTF-8';
-            $headers[] = 'Content-Transfer-Encoding: base64';
-            $payload = $b64($body);
+            $inner = ["Content-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . $b64($body)];
         } else {
             // multipart/alternative : version texte (repli) puis version HTML (préférée par les messageries)
-            $bd = 'tu_' . bin2hex(random_bytes(12));
-            $headers[] = 'Content-Type: multipart/alternative; boundary="' . $bd . '"';
-            $payload = "--$bd\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . $b64($body)
-                     . "--$bd\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . $b64($html)
-                     . "--$bd--\r\n";
+            $alt = 'tu_' . bin2hex(random_bytes(12));
+            $inner = ["Content-Type: multipart/alternative; boundary=\"$alt\"\r\n\r\n"
+                    . "--$alt\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . $b64($body)
+                    . "--$alt\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . $b64($html)
+                    . "--$alt--\r\n"];
+        }
+        if (!$attachments) {
+            [$ctype, $rest] = explode("\r\n\r\n", $inner[0], 2);
+            $headers[] = $ctype;
+            $payload = $rest;
+        } else {
+            // multipart/mixed : corps puis pièces jointes ['filename'=>..., 'content'=>binaire, 'type'=>mime]
+            $mx = 'tu_' . bin2hex(random_bytes(12));
+            $headers[] = 'Content-Type: multipart/mixed; boundary="' . $mx . '"';
+            $payload = "--$mx\r\n" . $inner[0];
+            foreach ($attachments as $a) {
+                $fn = str_replace(['"', "\r", "\n", '\\'], '_', (string)($a['filename'] ?? 'piece-jointe'));
+                $payload .= "--$mx\r\nContent-Type: " . ($a['type'] ?? 'application/octet-stream') . "; name=\"$fn\"\r\n"
+                          . "Content-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename=\"$fn\"\r\n\r\n"
+                          . $b64((string)$a['content']);
+            }
+            $payload .= "--$mx--\r\n";
         }
 
         try {

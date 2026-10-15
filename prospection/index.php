@@ -191,7 +191,7 @@ $qsBaseTri = ['categorie' => $categorieCode, 'famille' => $familleFiltre, 'statu
 
     <!-- Filtres -->
     <form method="get" class="tu-card tu-mb4" style="padding:16px 18px;">
-      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+      <div class="tu-form-bar">
         <div class="tu-form-field">
           <span class="tu-lbl">Catégorie</span>
           <select class="tu-input" name="categorie" onchange="this.form.submit()">

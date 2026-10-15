@@ -255,7 +255,7 @@ suite_nav_render('users', '');
       <div style="font-size:12px;color:var(--tu-ink-300);margin-top:2px;">Autoriser ou retirer un module pour une personne précise, sans changer son rôle.</div>
     </div>
 
-    <form method="get" style="padding:14px 18px;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;border-bottom:1px solid var(--tu-ink-100);">
+    <form method="get" class="tu-form-bar" style="padding:14px 18px;border-bottom:1px solid var(--tu-ink-100);">
       <div class="tu-form-field" style="width:420px;max-width:100%;">
         <span class="tu-lbl">Utilisateur</span>
         <select name="user" class="tu-input" onchange="this.form.submit()">
@@ -268,7 +268,7 @@ suite_nav_render('users', '');
           <?php endforeach; ?>
         </select>
       </div>
-      <div style="font-size:12px;color:var(--tu-ink-300);padding-bottom:10px;">• = a des droits particuliers</div>
+      <div class="tu-form-note">• = a des droits particuliers</div>
     </form>
 
     <?php if ($selected): ?>

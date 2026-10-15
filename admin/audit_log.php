@@ -341,7 +341,7 @@ suite_nav_render('audit', '');
       </div>
     </div>
 
-    <form method="get" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+    <form method="get" class="tu-form-bar">
       <input type="hidden" name="period" value="<?= h($fPeriod === 'custom' ? '' : $fPeriod) ?>">
       <input type="hidden" name="only" value="<?= h($fOnly) ?>">
       <div class="tu-form-field" style="min-width:150px;">

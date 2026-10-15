@@ -247,7 +247,7 @@ $base = suite_base();
       <!-- Ajout d'un suivi -->
       <form method="POST" style="padding-top:14px;border-top:1px solid var(--tu-ink-100);">
         <input type="hidden" name="action" value="ajouter_suivi"/>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+        <div class="tu-form-bar">
           <div class="tu-form-field">
             <span class="tu-lbl">Type</span>
             <select class="tu-input" name="type" style="width:150px;">
