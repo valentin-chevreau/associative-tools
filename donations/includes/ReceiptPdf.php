@@ -3,11 +3,9 @@ declare(strict_types=1);
 
 // donations/includes/ReceiptPdf.php — PDF du reçu fiscal (A4, tFPDF + Liberation Sans, UTF-8).
 
-if (!defined('FPDF_FONTPATH')) define('FPDF_FONTPATH', dirname(__DIR__, 2) . '/shared/lib/tfpdf/font/');
-require_once dirname(__DIR__, 2) . '/shared/lib/tfpdf/font/unifont/ttfonts.php';
-require_once dirname(__DIR__, 2) . '/shared/lib/tfpdf/tfpdf.php';
+require_once dirname(__DIR__, 2) . '/shared/lib/TuPdf.php';
 
-final class ReceiptPdf extends tFPDF
+final class ReceiptPdf extends TuPdf
 {
     private const LABEL_W = 30.0;
 
@@ -17,12 +15,8 @@ final class ReceiptPdf extends tFPDF
     public function __construct()
     {
         parent::__construct('P', 'mm', 'A4');
-        $this->PDFVersion = '1.4';
         $this->SetMargins(20, 20, 20);
         $this->SetAutoPageBreak(false);
-        $this->SetCreator('Suite Touraine-Ukraine');
-        $this->AddFont('LS', '',  'LiberationSans-Regular.ttf', true);
-        $this->AddFont('LS', 'B', 'LiberationSans-Bold.ttf', true);
     }
 
     /** @param array<string,mixed> $d données de receipt_build() */
