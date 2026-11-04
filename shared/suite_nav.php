@@ -166,10 +166,6 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
          class="tu-sb-item <?= _nav_active('logistique-families', $activeItem, $activeModule, 'logistique') ?>">
         Familles
       </a>
-      <a href="<?= h2($base . '/logistique/labels/labels.php') ?>"
-         class="tu-sb-item <?= _nav_active('logistique-labels', $activeItem, $activeModule, 'logistique') ?>">
-        Étiquettes
-      </a>
       <a href="<?= h2($base . '/logistique/stats.php') ?>"
          class="tu-sb-item <?= _nav_active('logistique-stats', $activeItem, $activeModule, 'logistique') ?>">
         Statistiques
@@ -452,6 +448,21 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
 
     <?php endif; ?>
 
+    <?php if ($isAdmin): ?>
+    <!-- AIDE -->
+    <div class="tu-sb-div"></div>
+    <a href="<?= h2($base . '/help/index.php') ?>"
+       class="tu-sb-item <?= _mod_active('aide', $activeModule) ?>"
+       id="snav-aide">
+      <svg class="tu-sb-ico" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      Aide
+    </a>
+    <?php endif; ?>
+
   </nav>
 
   <div class="tu-sb-foot">
@@ -522,6 +533,9 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
 <script src="<?= htmlspecialchars($base, ENT_QUOTES, 'UTF-8') ?>/assets/js/tu_menu.js?v=<?= (int)@filemtime(dirname(__DIR__) . '/assets/js/tu_menu.js') ?>" defer></script>
 <script src="<?= htmlspecialchars($base, ENT_QUOTES, 'UTF-8') ?>/assets/js/tu_phone.js?v=<?= (int)@filemtime(dirname(__DIR__) . '/assets/js/tu_phone.js') ?>" defer></script>
 <?php
+    // Centre d'aide : bouton « ? » + panneau latéral (admins connectés, hors page Aide)
+    require_once __DIR__ . '/help.php';
+    help_widget($activeModule);
 } // end suite_nav_render
 
 } // end if !function_exists
