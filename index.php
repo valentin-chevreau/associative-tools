@@ -11,59 +11,32 @@ if (!is_admin()) {
     exit;
 }
 
-require_once __DIR__ . '/shared/nav.config.php';
+require_once __DIR__ . '/shared/db.php';
 require_once __DIR__ . '/shared/suite_nav.php';
+require_once __DIR__ . '/shared/dashboard.php';
 
 function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
 
 $base = function_exists('suite_base') ? suite_base() : '';
+$pdo  = suite_pdo();
 
-$items = function_exists('nav_visible_items') ? nav_visible_items() : [];
-if (!is_array($items)) $items = [];
+$convoi   = dash_convoi($pdo);
+$creneaux = dash_creneaux($pdo);
+$caisse   = dash_caisse($pdo);
+$todo     = dash_a_traiter($pdo, $base);
 
-function portal_item_href(array $it): string {
-    if (!empty($it['href'])) return (string)$it['href'];
-    if (!empty($it['children'][0]['href'])) return (string)$it['children'][0]['href'];
-    return function_exists('suite_base') ? suite_base() . '/' : '/';
-}
+$volunteerName = function_exists('current_volunteer_name') ? current_volunteer_name() : '';
+$firstName     = ($volunteerName !== '' && $volunteerName !== 'Inconnu') ? trim(explode(' ', $volunteerName)[0]) : '';
+$todayLabel    = dash_jour_fr(new DateTimeImmutable('today'), true);
 
-function portal_item_desc(array $it): string {
-    if (!empty($it['children']) && is_array($it['children'])) {
-        $labels = array_slice(array_values(array_filter(array_map(fn($c) => (string)($c['label'] ?? ''), $it['children']))), 0, 4);
-        return $labels ? implode(' · ', $labels) : 'Ouvrir le module';
-    }
-    return 'Ouvrir le module';
-}
-
-$priority = [
-    'Planning' => 10, 'Convois' => 20, 'Stock local' => 30, 'Étiquettes' => 40,
-    'Caisse' => 50, 'Annuaire' => 55, 'Adhésions' => 60, 'Subventions' => 65,
-    'Dons' => 70, 'Prospection' => 72, 'Documents' => 75, "Rapport d'activité" => 80,
+$convoiStatus = [
+    'collecte'    => ['Collecte', 'tu-bdg-ink'],
+    'preparation' => ['En préparation', 'tu-bdg-amber'],
+    'docs'        => ['Docs douane', 'tu-bdg-blue'],
 ];
 
-usort($items, function($a, $b) use ($priority) {
-    $pa = $priority[(string)($a['label'] ?? '')] ?? 999;
-    $pb = $priority[(string)($b['label'] ?? '')] ?? 999;
-    return $pa !== $pb ? $pa <=> $pb : strcmp((string)($a['label']??''), (string)($b['label']??''));
-});
-
-// Regroupement identique à la sidebar : Terrain / Gestion associative / Administration.
-$terrainItems = array_values(array_filter($items, fn($it) => ($it['group'] ?? 'terrain') === 'terrain'));
-$gestionItems = array_values(array_filter($items, fn($it) => ($it['group'] ?? '') === 'gestion'));
-$showBackoffice = module_access('site_backoffice');
-
-// Tuiles Administration : mêmes conditions que la sidebar.
-$portalRole   = function_exists('current_role') ? current_role() : '';
-$portalSuper  = ($portalRole === 'super_admin');
-$adminTiles = [
-    ['Utilisateurs',          '👥', 'Comptes, rôles et accès',                 $base . '/admin/users.php',        false, true],
-    ['Journal d\'audit',      '📜', 'Historique des actions sensibles',        $base . '/admin/audit_log.php',    false, $portalSuper],
-    ['Alertes de connexion',  '🔔', 'E-mails à chaque connexion',              $base . '/admin/login_alerts.php', false, $portalSuper],
-    ['Migrations SQL',        '🗄️', 'Mises à jour de la base de données',      $base . '/admin/migrations.php',   false, $portalSuper],
-    ['Backoffice du site',    '🌐', 'Gérer le site internet grand public',     SITE_BACKOFFICE_URL,               true,  $showBackoffice],
-];
-$adminTiles = array_values(array_filter($adminTiles, fn($t) => $t[5]));
-
+$cssFile = __DIR__ . '/assets/css/suite_dashboard.css';
+$hasAny  = $convoi || $creneaux !== null || $caisse || $todo;
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -71,7 +44,8 @@ $adminTiles = array_values(array_filter($adminTiles, fn($t) => $t[5]));
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Suite Touraine-Ukraine</title>
-  <link rel="stylesheet" href="<?= h($base) ?>/assets/css/suite_nav.css<?= function_exists('suite_css_v') ? suite_css_v() : '' ?>"><?= function_exists('suite_pwa_head') ? suite_pwa_head() : '' ?>
+  <link rel="stylesheet" href="<?= h($base) ?>/assets/css/suite_nav.css<?= function_exists('suite_css_v') ? suite_css_v() : '' ?>">
+  <link rel="stylesheet" href="<?= h($base) ?>/assets/css/suite_dashboard.css?v=<?= (int)@filemtime($cssFile) ?>"><?= function_exists('suite_pwa_head') ? suite_pwa_head() : '' ?>
 </head>
 <body class="tu-v2">
 
@@ -83,144 +57,137 @@ $adminTiles = array_values(array_filter($adminTiles, fn($t) => $t[5]));
     <div class="tu-bc">
       <span class="tu-bc-cur">Accueil</span>
     </div>
+    <div class="tu-topbar-acts"><span class="dh-date"><?= h($todayLabel) ?></span></div>
   </div>
 
   <div class="tu-pg">
 
     <div class="tu-ph">
       <div>
-        <div class="tu-ph-title">Bonjour 👋</div>
-        <div class="tu-ph-sub">Que souhaitez-vous faire aujourd'hui ?</div>
+        <div class="tu-ph-title">Bonjour<?= $firstName !== '' ? ' ' . h($firstName) : '' ?></div>
+        <div class="tu-ph-sub">Voici l'état de la suite aujourd'hui.</div>
       </div>
     </div>
 
-    <?php if (!empty($terrainItems)): ?>
-      <div class="tu-portal-sec">Terrain</div>
-      <div class="tu-portal-grid tu-mb4">
-        <?php foreach ($terrainItems as $it): ?>
-          <a href="<?= h(portal_item_href($it)) ?>" class="tu-portal-card">
-            <div class="tu-pc-ico"><?= card_icon_emoji((string)($it['icon'] ?? '')) ?></div>
-            <div class="tu-pc-name"><?= h((string)($it['label'] ?? '')) ?></div>
-            <div class="tu-pc-desc"><?= h(portal_item_desc($it)) ?></div>
-            <div class="tu-pc-foot"><span class="tu-pc-link">Ouvrir →</span></div>
-          </a>
-        <?php endforeach; ?>
-      </div>
+    <?php if (!$hasAny): ?>
+      <div class="tu-card dh-card dh-empty">Rien à signaler pour le moment. Utilisez le menu pour accéder aux modules.</div>
     <?php endif; ?>
 
-    <?php if (!empty($gestionItems)): ?>
-      <div class="tu-portal-sec">Gestion associative</div>
-      <div class="tu-portal-grid tu-mb4">
-        <?php foreach ($gestionItems as $it): ?>
-          <a href="<?= h(portal_item_href($it)) ?>" class="tu-portal-card tu-portal-card-admin">
-            <div class="tu-pc-ico"><?= card_icon_emoji((string)($it['icon'] ?? '')) ?></div>
-            <div class="tu-pc-name"><?= h((string)($it['label'] ?? '')) ?></div>
-            <div class="tu-pc-desc"><?= h(portal_item_desc($it)) ?></div>
-            <div class="tu-pc-foot"><span class="tu-pc-link">Ouvrir →</span></div>
-          </a>
-        <?php endforeach; ?>
-      </div>
-    <?php endif; ?>
+    <div class="dh-row">
 
-    <?php if ($adminTiles): ?>
-      <div class="tu-portal-sec">Administration</div>
-      <div class="tu-portal-grid">
-        <?php foreach ($adminTiles as [$tLabel, $tIco, $tDesc, $tHref, $tExt]): ?>
-          <a href="<?= h($tHref) ?>"<?= $tExt ? ' target="_blank" rel="noopener"' : '' ?> class="tu-portal-card tu-portal-card-admin">
-            <div class="tu-pc-ico"><?= $tIco ?></div>
-            <div class="tu-pc-name"><?= h($tLabel) ?></div>
-            <div class="tu-pc-desc"><?= h($tDesc) ?></div>
-            <div class="tu-pc-foot"><span class="tu-pc-link"><?= $tExt ? 'Ouvrir ↗' : 'Ouvrir →' ?></span></div>
-          </a>
-        <?php endforeach; ?>
-      </div>
+      <?php if ($convoi): ?>
+      <?php [$cLabel, $cClass] = $convoiStatus[$convoi['status']] ?? [(string)$convoi['status'], 'tu-bdg-ink']; ?>
+      <section class="tu-card dh-card dh-wide">
+        <div class="dh-head">
+          <span class="dh-kicker">Prochain convoi</span>
+          <span class="tu-bdg <?= h($cClass) ?>"><?= h($cLabel) ?></span>
+          <?php if ($convoi['days'] !== null): ?>
+            <span class="dh-head-r">
+              <?php if ($convoi['days'] > 0): ?>Départ dans <b><?= (int)$convoi['days'] ?> jour<?= $convoi['days'] > 1 ? 's' : '' ?></b>
+              <?php elseif ($convoi['days'] === 0): ?><b>Départ aujourd'hui</b>
+              <?php else: ?>Départ prévu il y a <b><?= abs((int)$convoi['days']) ?> jour<?= abs($convoi['days']) > 1 ? 's' : '' ?></b><?php endif; ?>
+            </span>
+          <?php endif; ?>
+        </div>
+        <div>
+          <div class="dh-title"><?= h((string)$convoi['name']) ?></div>
+          <?php if (!empty($convoi['departure_date']) || !empty($convoi['destination'])): ?>
+            <div class="dh-sub">
+              <?= !empty($convoi['departure_date']) ? h(dash_jour_fr(new DateTimeImmutable((string)$convoi['departure_date']), true)) : '' ?>
+              <?= (!empty($convoi['departure_date']) && !empty($convoi['destination'])) ? ' · ' : '' ?>
+              <?= !empty($convoi['destination']) ? h((string)$convoi['destination']) : '' ?>
+            </div>
+          <?php endif; ?>
+        </div>
+        <div class="dh-stats">
+          <div class="dh-stat"><div class="dh-stat-v"><?= (int)$convoi['boxes'] ?></div><div class="dh-stat-l">carton<?= $convoi['boxes'] > 1 ? 's' : '' ?></div></div>
+          <div class="dh-stat"><div class="dh-stat-v"><?= (int)$convoi['cats'] ?></div><div class="dh-stat-l">catégorie<?= $convoi['cats'] > 1 ? 's' : '' ?></div></div>
+        </div>
+        <div class="dh-actions">
+          <a href="<?= h($base) ?>/logistique/convoys/view.php?id=<?= (int)$convoi['id'] ?>" class="tu-btn tu-btn-p">Ouvrir le convoi</a>
+        </div>
+      </section>
+      <?php endif; ?>
+
+      <?php if ($creneaux !== null): ?>
+      <section class="tu-card dh-card dh-narrow">
+        <div class="dh-head">
+          <span class="dh-kicker">Créneaux à pourvoir</span>
+          <?php if ($creneaux['missing'] > 0): ?><span class="tu-bdg tu-bdg-red"><?= (int)$creneaux['missing'] ?> manquant<?= $creneaux['missing'] > 1 ? 's' : '' ?></span><?php endif; ?>
+        </div>
+        <?php if (!$creneaux['rows']): ?>
+          <div class="dh-ok">Tous les créneaux à venir ont le minimum de bénévoles.</div>
+        <?php else: ?>
+          <div class="dh-list">
+          <?php foreach ($creneaux['rows'] as $s):
+              $start = new DateTimeImmutable((string)$s['start_datetime']);
+              $end   = !empty($s['end_datetime']) ? new DateTimeImmutable((string)$s['end_datetime']) : null;
+              $reg = (int)$s['registered']; $min = (int)$s['min_volunteers'];
+          ?>
+            <div class="dh-slot">
+              <div class="dh-slot-d"><span><?= h(dash_jour_fr($start)) ?></span><b><?= (int)$start->format('j') ?></b></div>
+              <div class="dh-slot-t">
+                <div class="dh-slot-n"><?= h((string)$s['title']) ?></div>
+                <div class="dh-slot-h"><?= h($start->format('H:i')) ?><?= $end ? ' → ' . h($end->format('H:i')) : '' ?></div>
+              </div>
+              <span class="tu-bdg <?= $reg === 0 ? 'tu-bdg-red' : 'tu-bdg-amber' ?>"><?= $reg ?> / <?= $min ?></span>
+            </div>
+          <?php endforeach; ?>
+          </div>
+        <?php endif; ?>
+        <a href="<?= h($base) ?>/planning/events.php" class="dh-more">Voir tout le planning →</a>
+      </section>
+      <?php endif; ?>
+    </div>
+
+    <?php if ($caisse || $todo): ?>
+    <div class="dh-row">
+
+      <?php if ($caisse): ?>
+      <section class="tu-card dh-card dh-narrow">
+        <div class="dh-head">
+          <span class="dh-kicker">Caisse</span>
+          <?php if ($caisse['is_open']): ?><span class="tu-bdg tu-bdg-amber">En cours</span>
+          <?php else: ?><span class="tu-bdg tu-bdg-green">Clôturé</span><?php endif; ?>
+        </div>
+        <div>
+          <div class="dh-title dh-title-s"><?= h((string)$caisse['nom']) ?></div>
+          <div class="dh-sub"><?= $caisse['is_open'] ? 'Évènement ouvert' : 'Dernier évènement' ?> · <?= (int)$caisse['sales'] ?> vente<?= $caisse['sales'] > 1 ? 's' : '' ?></div>
+        </div>
+        <div class="dh-stats">
+          <div class="dh-stat"><div class="dh-stat-v"><?= h(number_format($caisse['total'], 2, ',', ' ')) ?> €</div><div class="dh-stat-l">encaissé</div></div>
+          <?php if (!$caisse['is_open'] && $caisse['ecart'] !== null): ?>
+            <div class="dh-stat"><div class="dh-stat-v <?= abs($caisse['ecart']) >= 0.005 ? 'dh-neg' : '' ?>"><?= ($caisse['ecart'] > 0 ? '+' : '') . h(number_format($caisse['ecart'], 2, ',', ' ')) ?> €</div><div class="dh-stat-l">écart de caisse</div></div>
+          <?php endif; ?>
+        </div>
+        <div class="dh-actions">
+          <a href="<?= h($base) ?>/caisse/<?= $caisse['is_open'] ? 'index.php' : 'evenements.php' ?>" class="tu-btn <?= $caisse['is_open'] ? 'tu-btn-p' : 'tu-btn-s' ?>"><?= $caisse['is_open'] ? 'Ouvrir la caisse' : 'Voir les évènements' ?></a>
+        </div>
+      </section>
+      <?php endif; ?>
+
+      <?php if ($todo): ?>
+      <section class="tu-card dh-card dh-wide">
+        <div class="dh-head">
+          <span class="dh-kicker">À traiter</span>
+          <span class="tu-bdg tu-bdg-ink"><?= count($todo) ?></span>
+        </div>
+        <div class="dh-todo">
+          <?php foreach ($todo as $t): ?>
+            <a href="<?= h($t['href']) ?>" class="dh-todo-i">
+              <span class="dh-todo-t"><b><?= h($t['label']) ?></b><span><?= h($t['hint']) ?></span></span>
+              <span class="dh-chev" aria-hidden="true">›</span>
+            </a>
+          <?php endforeach; ?>
+        </div>
+      </section>
+      <?php endif; ?>
+
+    </div>
     <?php endif; ?>
 
   </div>
 </div>
-
-<?php
-function card_icon_emoji(string $name): string {
-    return match($name) {
-        'calendar'  => '📅',
-        'truck'     => '🚛',
-        'box'       => '📦',
-        'tag'       => '🏷',
-        'cash'      => '💰',
-        'users'     => '👥',
-        'id-card'   => '🪪',
-        'briefcase' => '🗂',
-        'gift'      => '🎁',
-        'file'      => '📄',
-        'chart'     => '📊',
-        default     => '⚙️',
-    };
-}
-?>
-
-<style>
-.tu-portal-sec { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--tu-ink-300);margin-bottom:12px; }
-.tu-portal-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 12px;
-}
-.tu-portal-card {
-  background: var(--tu-raised);
-  border: 1px solid var(--tu-ink-100);
-  border-radius: var(--tu-r-lg);
-  padding: 18px;
-  cursor: pointer;
-  transition: all .2s;
-  text-decoration: none;
-  display: block;
-  box-shadow: var(--tu-shadow);
-}
-.tu-portal-card:hover {
-  box-shadow: var(--tu-shadow-lg);
-  transform: translateY(-2px);
-  border-color: var(--tu-amber-400);
-}
-.tu-portal-card-admin {
-  border-color: rgba(232,146,74,.22);
-  background: linear-gradient(135deg, #fffef9, #fdf5e8);
-}
-.tu-pc-ico {
-  width: 42px; height: 42px;
-  border-radius: 12px;
-  background: var(--tu-sand-100);
-  display: flex; align-items: center; justify-content: center;
-  margin-bottom: 12px;
-  font-size: 20px;
-}
-.tu-portal-card-admin .tu-pc-ico { background: rgba(232,146,74,.14); }
-.tu-pc-name {
-  font-family: var(--tu-font-d);
-  font-size: 14.5px; font-weight: 700;
-  color: var(--tu-ink-900); margin-bottom: 4px;
-}
-.tu-pc-desc { font-size: 12px; color: var(--tu-ink-300); line-height: 1.5; }
-.tu-pc-foot {
-  margin-top: 12px;
-  display: flex; align-items: center; justify-content: space-between;
-}
-.tu-pc-link { font-size: 12px; font-weight: 700; color: var(--tu-amber-500); }
-
-/* Mobile : accueil compacte — tuiles 2 par ligne, sans description, pour limiter le défilement */
-@media (max-width: 700px) {
-  .tu-ph { margin-bottom: 10px; }
-  .tu-ph-title { font-size: 22px; }
-  .tu-ph-sub { display: none; }
-  .tu-portal-sec { margin-bottom: 8px; }
-  .tu-portal-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
-  .tu-mb4 { margin-bottom: 14px !important; }
-  .tu-portal-card { padding: 12px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; min-height: 92px; }
-  .tu-portal-card:hover { transform: none; }
-  .tu-pc-ico { width: 34px; height: 34px; border-radius: 10px; font-size: 17px; margin-bottom: 8px; }
-  .tu-pc-name { font-size: 13.5px; line-height: 1.25; margin-bottom: 0; }
-  .tu-pc-desc, .tu-pc-foot { display: none; }
-}
-</style>
 
 </body>
 </html>
