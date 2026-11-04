@@ -119,10 +119,10 @@ if (!function_exists('dash_a_traiter')) {
         $out = [];
 
         if (module_access('donations')) {
-            $n = (int)$pdo->query("SELECT COUNT(*) FROM donations WHERE receipt_eligible = 1 AND (receipt_number IS NULL OR receipt_number = '')")->fetchColumn();
+            $n = (int)$pdo->query("SELECT COUNT(*) FROM donations WHERE source = 'manual' AND receipt_eligible = 1 AND (receipt_number IS NULL OR receipt_number = '')")->fetchColumn();
             if ($n > 0) {
                 $out[] = [
-                    'label' => $n . ($n > 1 ? ' dons éligibles sans reçu fiscal' : ' don éligible sans reçu fiscal'),
+                    'label' => $n . ($n > 1 ? ' dons manuels sans reçu fiscal' : ' don manuel sans reçu fiscal'),
                     'hint'  => 'Dons',
                     'href'  => $base . '/donations/index.php',
                 ];
