@@ -375,10 +375,10 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
     <?php endif; ?>
     <?php endif; ?>
 
+    <?php if ($isAdmin): ?>
     <div class="tu-sb-div"></div>
     <span class="tu-sb-sec">Administration</span>
 
-    <?php if ($isAdmin): ?>
     <!-- UTILISATEURS -->
     <a href="<?= h2($base . '/admin/users.php') ?>"
        class="tu-sb-item <?= _mod_active('users', $activeModule) ?>"
