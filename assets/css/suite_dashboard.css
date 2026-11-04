@@ -20,7 +20,7 @@
 .dh-actions { display: flex; gap: 10px; margin-top: auto; }
 .dh-ok { font-size: 13.5px; color: var(--tu-ink-500); padding: 6px 0; }
 .dh-list { display: flex; flex-direction: column; }
-.dh-slot { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--tu-ink-50); }
+.dh-slot { text-decoration: none; color: inherit; display: flex; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--tu-ink-50); }
 .dh-slot-d { width: 46px; text-align: center; flex-shrink: 0; }
 .dh-slot-d span { display: block; font-size: 11px; color: var(--tu-ink-300); text-transform: uppercase; font-weight: 700; }
 .dh-slot-d b { font-family: var(--tu-font-d); font-size: 18px; }
@@ -35,7 +35,14 @@
 .dh-todo-t b { display: block; font-size: 14px; font-weight: 600; }
 .dh-todo-t span { display: block; font-size: 12.5px; color: var(--tu-ink-300); }
 .dh-chev { color: var(--tu-ink-300); font-size: 18px; }
+.dh-bars { display: flex; flex-direction: column; gap: 8px; }
+.dh-bar { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.dh-bar-l { width: 150px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--tu-ink-700); }
+.dh-bar-t { flex: 1; height: 8px; border-radius: 5px; background: var(--tu-sand-100); overflow: hidden; }
+.dh-bar-t span { display: block; height: 100%; background: var(--tu-amber-500); border-radius: 5px; }
+.dh-bar b { width: 32px; text-align: right; font-weight: 700; }
 @media (max-width: 700px) {
+  .dh-bar-l { width: 110px; }
   .dh-date { display: none; }
   .dh-row { gap: 14px; margin-bottom: 14px; }
   .dh-card { padding: 16px; }

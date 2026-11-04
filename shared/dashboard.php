@@ -39,6 +39,30 @@ if (!function_exists('dash_convoi')) {
         $c['boxes'] = (int)$t['boxes'];
         $c['cats']  = (int)$t['cats'];
 
+        // Cartons médicaux (catégorie ou racine marquée médicale)
+        $m = $pdo->prepare("
+            SELECT COUNT(*)
+            FROM logistique_boxes b
+            JOIN logistique_categories c ON c.id = b.category_id
+            LEFT JOIN logistique_categories r ON r.id = COALESCE(c.root_id, c.parent_id)
+            WHERE b.convoy_id = ? AND (c.is_medical = 1 OR COALESCE(r.is_medical, 0) = 1)
+        ");
+        $m->execute([(int)$c['id']]);
+        $c['medical'] = (int)$m->fetchColumn();
+
+        // Répartition par catégorie racine (les 4 plus remplies)
+        $r = $pdo->prepare("
+            SELECT rc.label, COUNT(*) AS n
+            FROM logistique_boxes b
+            JOIN logistique_categories rc ON rc.id = b.root_category_id
+            WHERE b.convoy_id = ?
+            GROUP BY rc.id, rc.label
+            ORDER BY n DESC, rc.label ASC
+            LIMIT 4
+        ");
+        $r->execute([(int)$c['id']]);
+        $c['top'] = $r->fetchAll(PDO::FETCH_ASSOC);
+
         $c['days'] = null;
         if (!empty($c['departure_date'])) {
             $today = new DateTimeImmutable('today');
@@ -49,31 +73,20 @@ if (!function_exists('dash_convoi')) {
     }
 }
 
-if (!function_exists('dash_creneaux')) {
-    /** Créneaux à venir où il manque des inscrits (inscrits « present » < minimum). */
-    function dash_creneaux(PDO $pdo, int $limit = 4): ?array {
+if (!function_exists('dash_evenements')) {
+    /** Prochains évènements du planning avec le nombre de bénévoles présents (inscrits « present »). */
+    function dash_evenements(PDO $pdo, int $limit = 5): ?array {
         if (!module_access('planning')) return null;
         $q = $pdo->prepare("
-            SELECT s.id, s.start_datetime, s.end_datetime, s.min_volunteers, e.title,
-                   (SELECT COUNT(*) FROM planning_event_registrations r WHERE r.slot_id = s.id AND r.status = 'present') AS registered
-            FROM planning_event_slots s
-            JOIN planning_events e ON e.id = s.event_id
-            WHERE s.start_datetime >= NOW()
-              AND s.min_volunteers > 0
-              AND (SELECT COUNT(*) FROM planning_event_registrations r WHERE r.slot_id = s.id AND r.status = 'present') < s.min_volunteers
-            ORDER BY s.start_datetime ASC
+            SELECT e.id, e.title, e.start_datetime, e.end_datetime, e.min_volunteers,
+                   (SELECT COUNT(DISTINCT r.volunteer_id) FROM planning_event_registrations r
+                     WHERE r.event_id = e.id AND r.status = 'present') AS present
+            FROM planning_events e
+            WHERE e.is_cancelled = 0 AND e.start_datetime >= NOW()
+            ORDER BY e.start_datetime ASC
             LIMIT " . (int)$limit);
         $q->execute();
-        $rows = $q->fetchAll(PDO::FETCH_ASSOC);
-
-        $tot = $pdo->query("
-            SELECT COALESCE(SUM(s.min_volunteers - (SELECT COUNT(*) FROM planning_event_registrations r WHERE r.slot_id = s.id AND r.status = 'present')), 0)
-            FROM planning_event_slots s
-            WHERE s.start_datetime >= NOW() AND s.min_volunteers > 0
-              AND (SELECT COUNT(*) FROM planning_event_registrations r WHERE r.slot_id = s.id AND r.status = 'present') < s.min_volunteers
-        ")->fetchColumn();
-
-        return ['rows' => $rows, 'missing' => (int)$tot];
+        return $q->fetchAll(PDO::FETCH_ASSOC);
     }
 }
 

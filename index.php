@@ -21,7 +21,7 @@ $base = function_exists('suite_base') ? suite_base() : '';
 $pdo  = suite_pdo();
 
 $convoi   = dash_convoi($pdo);
-$creneaux = dash_creneaux($pdo);
+$events   = dash_evenements($pdo);
 $caisse   = dash_caisse($pdo);
 $todo     = dash_a_traiter($pdo, $base);
 
@@ -36,7 +36,7 @@ $convoiStatus = [
 ];
 
 $cssFile = __DIR__ . '/assets/css/suite_dashboard.css';
-$hasAny  = $convoi || $creneaux !== null || $caisse || $todo;
+$hasAny  = $convoi || $events !== null || $caisse || $todo;
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -102,36 +102,46 @@ $hasAny  = $convoi || $creneaux !== null || $caisse || $todo;
         <div class="dh-stats">
           <div class="dh-stat"><div class="dh-stat-v"><?= (int)$convoi['boxes'] ?></div><div class="dh-stat-l">carton<?= $convoi['boxes'] > 1 ? 's' : '' ?></div></div>
           <div class="dh-stat"><div class="dh-stat-v"><?= (int)$convoi['cats'] ?></div><div class="dh-stat-l">catégorie<?= $convoi['cats'] > 1 ? 's' : '' ?></div></div>
+          <div class="dh-stat"><div class="dh-stat-v"><?= (int)$convoi['medical'] ?></div><div class="dh-stat-l"><?= $convoi['medical'] > 1 ? 'cartons médicaux' : 'carton médical' ?></div></div>
         </div>
+        <?php if ($convoi['top']): $max = max(1, (int)$convoi['top'][0]['n']); ?>
+        <div class="dh-bars">
+          <?php foreach ($convoi['top'] as $t): ?>
+            <div class="dh-bar">
+              <span class="dh-bar-l"><?= h((string)$t['label']) ?></span>
+              <span class="dh-bar-t"><span style="width:<?= (int)round(100 * (int)$t['n'] / $max) ?>%"></span></span>
+              <b><?= (int)$t['n'] ?></b>
+            </div>
+          <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
         <div class="dh-actions">
           <a href="<?= h($base) ?>/logistique/convoys/view.php?id=<?= (int)$convoi['id'] ?>" class="tu-btn tu-btn-p">Ouvrir le convoi</a>
         </div>
       </section>
       <?php endif; ?>
 
-      <?php if ($creneaux !== null): ?>
+      <?php if ($events !== null): ?>
       <section class="tu-card dh-card dh-narrow">
-        <div class="dh-head">
-          <span class="dh-kicker">Créneaux à pourvoir</span>
-          <?php if ($creneaux['missing'] > 0): ?><span class="tu-bdg tu-bdg-red"><?= (int)$creneaux['missing'] ?> manquant<?= $creneaux['missing'] > 1 ? 's' : '' ?></span><?php endif; ?>
-        </div>
-        <?php if (!$creneaux['rows']): ?>
-          <div class="dh-ok">Tous les créneaux à venir ont le minimum de bénévoles.</div>
+        <div class="dh-head"><span class="dh-kicker">Prochains évènements</span></div>
+        <?php if (!$events): ?>
+          <div class="dh-ok">Aucun évènement à venir au planning.</div>
         <?php else: ?>
           <div class="dh-list">
-          <?php foreach ($creneaux['rows'] as $s):
-              $start = new DateTimeImmutable((string)$s['start_datetime']);
-              $end   = !empty($s['end_datetime']) ? new DateTimeImmutable((string)$s['end_datetime']) : null;
-              $reg = (int)$s['registered']; $min = (int)$s['min_volunteers'];
+          <?php foreach ($events as $e):
+              $start = new DateTimeImmutable((string)$e['start_datetime']);
+              $end   = !empty($e['end_datetime']) ? new DateTimeImmutable((string)$e['end_datetime']) : null;
+              $pres = (int)$e['present']; $min = (int)$e['min_volunteers'];
+              $cls  = $pres === 0 ? 'tu-bdg-red' : ($min > 0 && $pres < $min ? 'tu-bdg-amber' : 'tu-bdg-green');
           ?>
-            <div class="dh-slot">
+            <a href="<?= h($base) ?>/planning/admin/event_registrations.php?id=<?= (int)$e['id'] ?>" class="dh-slot">
               <div class="dh-slot-d"><span><?= h(dash_jour_fr($start)) ?></span><b><?= (int)$start->format('j') ?></b></div>
               <div class="dh-slot-t">
-                <div class="dh-slot-n"><?= h((string)$s['title']) ?></div>
+                <div class="dh-slot-n"><?= h((string)$e['title']) ?></div>
                 <div class="dh-slot-h"><?= h($start->format('H:i')) ?><?= $end ? ' → ' . h($end->format('H:i')) : '' ?></div>
               </div>
-              <span class="tu-bdg <?= $reg === 0 ? 'tu-bdg-red' : 'tu-bdg-amber' ?>"><?= $reg ?> / <?= $min ?></span>
-            </div>
+              <span class="tu-bdg <?= $cls ?>"><?= $pres ?> présent<?= $pres > 1 ? 's' : '' ?><?= $min > 0 ? ' · min ' . $min : '' ?></span>
+            </a>
           <?php endforeach; ?>
           </div>
         <?php endif; ?>
