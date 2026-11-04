@@ -17,10 +17,10 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
     $isSuperAdmin = ($role === 'super_admin');
 
     // Accès aux modules (droits gérés par le super admin). Un visiteur non
-    // connecté garde la sidebar publique historique (les pages protégées le
-    // renvoient de toute façon vers la connexion).
+    // connecté ne voit que le planning : seules les pages du planning sont
+    // publiques (voir « PROTECTION GLOBALE » dans bootstrap.php).
     $can = static function (string $module) use ($isAdmin): bool {
-        if (!$isAdmin) return in_array($module, ['planning', 'caisse', 'logistique', 'annuaire'], true);
+        if (!$isAdmin) return $module === 'planning';
         return module_access($module);
     };
     $showGestion = $can('adhesions') || $can('subventions') || $can('donations') || $can('prospection') || $can('documents') || $can('reports');
