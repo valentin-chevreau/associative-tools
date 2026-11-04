@@ -3,7 +3,7 @@
 //
 // Chaque connexion prévient les super admins par e-mail, sauf celles des utilisateurs exclus ici.
 // Seuls les super admins reçoivent ces alertes, et jamais celle de leur propre connexion.
-// Fonctionnement : shared/login_alerts.php ; envoi : shared/mailer.php (config MAIL_* du .env).
+// Fonctionnement : shared/login_alerts.php ; envoi : shared/mailer.php (serveur de messagerie local).
 
 declare(strict_types=1);
 
@@ -91,7 +91,7 @@ if ($tablesOk && $_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'test') {
         $meUser = $byId[$me] ?? null;
         if (!suite_mail_ready()) {
-            $errors[] = "L'envoi d'e-mails n'est pas configuré (MAIL_FROM manquant dans le .env de la suite).";
+            $errors[] = "Adresse d'expédition indéterminée : définissez MAIL_FROM dans le .env de la suite.";
         } elseif (!$meUser || trim((string)$meUser['email']) === '') {
             $errors[] = "Votre fiche utilisateur n'a pas d'adresse e-mail : ajoutez-la dans Utilisateurs.";
         } else {
@@ -110,7 +110,6 @@ if ($tablesOk && $_SERVER['REQUEST_METHOD'] === 'POST') {
 $excluded = $tablesOk ? suite_login_alert_excluded_ids($pdo) : [];
 $mailCfg = suite_mail_config();
 $mailReady = suite_mail_ready();
-$transport = $mailCfg['host'] !== '' ? 'SMTP ' . $mailCfg['host'] . ':' . $mailCfg['port'] : 'fonction mail() du serveur';
 
 // Destinataires : super admins actifs avec adresse e-mail.
 $recipients = array_values(array_filter($users, static fn($u) => $u['role'] === 'super_admin' && (int)$u['is_active'] === 1));
@@ -233,16 +232,15 @@ suite_nav_render('login-alerts', '');
   <div class="tu-card" style="margin-bottom:22px;">
     <div class="la-head">
       <b>Envoi des e-mails</b>
-      <p>Paramétrage dans le .env de la suite : MAIL_FROM, et MAIL_HOST / MAIL_PORT / MAIL_USER / MAIL_PASS / MAIL_ENCRYPTION pour un serveur SMTP.</p>
+      <p>Les e-mails partent par le serveur de messagerie du serveur (Postfix). L'adresse d'expédition peut être personnalisée avec MAIL_FROM dans le .env de la suite.</p>
     </div>
     <div class="la-body">
       <div class="la-row">
         <span>État</span>
-        <span style="font-weight:700;color:<?= $mailReady ? 'var(--tu-green-main)' : 'var(--tu-red-main)' ?>;"><?= $mailReady ? 'Configuré' : 'Non configuré (MAIL_FROM manquant)' ?></span>
+        <span style="font-weight:700;color:<?= $mailReady ? 'var(--tu-green-main)' : 'var(--tu-red-main)' ?>;"><?= $mailReady ? 'Prêt' : 'Adresse d\'expédition indéterminée (MAIL_FROM)' ?></span>
       </div>
       <?php if ($mailReady): ?>
         <div class="la-row"><span>Expéditeur</span><span><?= h($mailCfg['from_name']) ?> &lt;<?= h($mailCfg['from']) ?>&gt;</span></div>
-        <div class="la-row"><span>Transport</span><span><?= h($transport) ?></span></div>
       <?php endif; ?>
     </div>
     <form method="post" class="la-foot">

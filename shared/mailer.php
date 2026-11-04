@@ -1,14 +1,11 @@
 <?php
 /**
- * shared/mailer.php — Envoi d'e-mails texte, sans dépendance externe.
+ * shared/mailer.php — Envoi d'e-mails (texte + HTML + pièces jointes), sans dépendance externe.
  *
- * Configuration dans le .env de la suite (voir shared/db_credentials.php) :
- *   MAIL_HOST         serveur SMTP. Vide = fonction mail() de PHP (MTA local du serveur).
- *   MAIL_PORT         465 (ssl), 587 (tls) ou 25. Défaut : 465 si ssl, 587 si tls.
- *   MAIL_ENCRYPTION   ssl | tls | none   (défaut : tls)
- *   MAIL_USER / MAIL_PASS   authentification SMTP (facultative)
- *   MAIL_FROM         adresse d'expédition (obligatoire)
- *   MAIL_FROM_NAME    nom affiché (défaut : « Touraine-Ukraine »)
+ * Transport : fonction mail() de PHP, donc le serveur de messagerie local (Postfix) ; aucun SMTP à configurer.
+ * Réglages facultatifs dans le .env de la suite (voir shared/db_credentials.php) :
+ *   MAIL_FROM        adresse d'expédition (défaut : noreply@<domaine du site>)
+ *   MAIL_FROM_NAME   nom affiché (défaut : « Touraine-Ukraine »)
  *
  * suite_mail_send() ne lève jamais d'exception : elle renvoie null en cas de succès, sinon
  * le message d'erreur (déjà écrit dans error_log) — un souci d'e-mail ne doit jamais
@@ -18,7 +15,7 @@
 require_once __DIR__ . '/db_credentials.php';
 
 if (!function_exists('suite_mail_config')) {
-    /** @return array{host:string,port:int,enc:string,user:string,pass:string,from:string,from_name:string} */
+    /** @return array{from:string,from_name:string} */
     function suite_mail_config(): array {
         static $cfg = null;
         if ($cfg !== null) return $cfg;
@@ -28,15 +25,14 @@ if (!function_exists('suite_mail_config')) {
             if ($v === false || $v === '') $v = $file[$k] ?? '';
             return $v === '' ? $d : (string)$v;
         };
-        $enc = strtolower($get('MAIL_ENCRYPTION', 'tls'));
-        if (!in_array($enc, ['ssl', 'tls', 'none'], true)) $enc = 'tls';
+        $from = $get('MAIL_FROM');
+        if ($from === '') {
+            $host = strtolower((string)preg_replace('/:\d+$/', '', (string)($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? '')));
+            $host = preg_replace('/^www\./', '', $host);
+            $from = preg_match('/^[a-z0-9.-]+\.[a-z]{2,}$/', (string)$host) ? 'noreply@' . $host : '';
+        }
         $cfg = [
-            'host'      => $get('MAIL_HOST'),
-            'port'      => (int)$get('MAIL_PORT', $enc === 'ssl' ? '465' : ($enc === 'tls' ? '587' : '25')),
-            'enc'       => $enc,
-            'user'      => $get('MAIL_USER'),
-            'pass'      => $get('MAIL_PASS'),
-            'from'      => $get('MAIL_FROM'),
+            'from'      => $from,
             'from_name' => $get('MAIL_FROM_NAME', 'Touraine-Ukraine'),
         ];
         return $cfg;
@@ -44,7 +40,7 @@ if (!function_exists('suite_mail_config')) {
 }
 
 if (!function_exists('suite_mail_ready')) {
-    /** true si l'expéditeur est configuré (sans cela, aucun envoi n'est tenté). */
+    /** true si une adresse d'expédition est déterminée (sans cela, aucun envoi n'est tenté). */
     function suite_mail_ready(): bool {
         return suite_mail_config()['from'] !== '';
     }
@@ -68,7 +64,7 @@ if (!function_exists('suite_mail_send')) {
     function suite_mail_send(string $to, string $subject, string $body, ?string $html = null, array $attachments = []): ?string {
         $cfg = suite_mail_config();
         $to = suite_mail_header_safe($to);
-        if ($cfg['from'] === '') return "MAIL_FROM n'est pas configuré dans le .env de la suite.";
+        if ($cfg['from'] === '') return "Adresse d'expédition indéterminée : définissez MAIL_FROM dans le .env de la suite.";
         if (!filter_var($to, FILTER_VALIDATE_EMAIL)) return "Adresse destinataire invalide.";
         if (!filter_var($cfg['from'], FILTER_VALIDATE_EMAIL)) return "MAIL_FROM n'est pas une adresse valide.";
 
@@ -113,9 +109,7 @@ if (!function_exists('suite_mail_send')) {
         }
 
         try {
-            $err = $cfg['host'] === ''
-                ? suite_mail_via_php($to, $subject, $headers, $payload, $from)
-                : suite_mail_via_smtp($cfg, $from, $to, $headers, $payload);
+            $err = suite_mail_via_php($to, $subject, $headers, $payload, $from);
         } catch (Throwable $e) {
             $err = $e->getMessage();
         }
@@ -163,57 +157,6 @@ if (!function_exists('suite_mail_via_php')) {
     function suite_mail_via_php(string $to, string $subject, array $headers, string $payload, string $from): ?string {
         $hdr = array_values(array_filter($headers, static fn($h) => !str_starts_with($h, 'To:') && !str_starts_with($h, 'Subject:')));
         $ok = @mail($to, suite_mail_encode_header($subject), $payload, implode("\r\n", $hdr), '-f' . escapeshellarg($from));
-        return $ok ? null : "mail() a échoué (aucun MTA local ? définissez MAIL_HOST pour utiliser un serveur SMTP).";
-    }
-}
-
-if (!function_exists('suite_mail_via_smtp')) {
-    function suite_mail_via_smtp(array $cfg, string $from, string $to, array $headers, string $payload): ?string {
-        $scheme = $cfg['enc'] === 'ssl' ? 'ssl' : 'tcp';
-        $fp = @stream_socket_client($scheme . '://' . $cfg['host'] . ':' . $cfg['port'], $errno, $errstr, 8);
-        if (!$fp) return "Connexion SMTP impossible ($errstr)";
-        stream_set_timeout($fp, 8);
-
-        $read = static function () use ($fp): array {
-            $code = 0; $text = '';
-            while (($line = fgets($fp, 1024)) !== false) {
-                $text .= $line;
-                $code = (int)substr($line, 0, 3);
-                if (!isset($line[3]) || $line[3] !== '-') break;
-            }
-            return [$code, trim($text)];
-        };
-        $cmd = static function (string $c, array $ok) use ($fp, $read): ?string {
-            fwrite($fp, $c . "\r\n");
-            [$code, $text] = $read();
-            return in_array($code, $ok, true) ? null : "SMTP : réponse inattendue ($text)";
-        };
-
-        [$code, $text] = $read();
-        if ($code !== 220) { fclose($fp); return "SMTP : bannière inattendue ($text)"; }
-        $ehlo = 'EHLO ' . (gethostname() ?: 'localhost');
-        if ($e = $cmd($ehlo, [250])) { fclose($fp); return $e; }
-
-        if ($cfg['enc'] === 'tls') {
-            if ($e = $cmd('STARTTLS', [220])) { fclose($fp); return $e; }
-            if (!@stream_socket_enable_crypto($fp, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) { fclose($fp); return 'SMTP : négociation TLS impossible'; }
-            if ($e = $cmd($ehlo, [250])) { fclose($fp); return $e; }
-        }
-        if ($cfg['user'] !== '') {
-            if ($e = $cmd('AUTH LOGIN', [334]))                              { fclose($fp); return $e; }
-            if ($e = $cmd(base64_encode($cfg['user']), [334]))               { fclose($fp); return $e; }
-            if ($e = $cmd(base64_encode($cfg['pass']), [235]))               { fclose($fp); return 'SMTP : identifiants refusés'; }
-        }
-        if ($e = $cmd('MAIL FROM:<' . $from . '>', [250])) { fclose($fp); return $e; }
-        if ($e = $cmd('RCPT TO:<' . $to . '>', [250, 251])) { fclose($fp); return $e; }
-        if ($e = $cmd('DATA', [354])) { fclose($fp); return $e; }
-
-        $data = implode("\r\n", $headers) . "\r\n\r\n" . $payload;
-        $data = preg_replace('/^\./m', '..', $data);
-        fwrite($fp, $data . "\r\n.\r\n");
-        [$code, $text] = $read();
-        $cmd('QUIT', [221]);
-        fclose($fp);
-        return $code === 250 ? null : "SMTP : message refusé ($text)";
+        return $ok ? null : "mail() a échoué (le serveur de messagerie local n'a pas accepté le message).";
     }
 }
