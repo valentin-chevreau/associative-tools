@@ -7,6 +7,39 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 
+if (!function_exists('suite_nav_scripts')) {
+    /** Scripts communs de l'interface (sélecteurs, menus, téléphone). */
+    function suite_nav_scripts(string $base): void {
+        $root = dirname(__DIR__);
+        foreach (['tu_select', 'tu_menu', 'tu_phone'] as $js) {
+            echo '<script src="' . htmlspecialchars($base, ENT_QUOTES, 'UTF-8') . '/assets/js/' . $js . '.js?v='
+               . (int)@filemtime($root . '/assets/js/' . $js . '.js') . '" defer></script>' . "\n";
+        }
+    }
+}
+
+if (!function_exists('suite_nav_public_render')) {
+    /** Visiteur non connecté : pas de sidebar, une barre fine (logo + Connexion). */
+    function suite_nav_public_render(string $base, string $loginUrl): void {
+        $e = static fn(string $v): string => htmlspecialchars($v, ENT_QUOTES, 'UTF-8');
+        $logo = function_exists('suite_logo_data_uri') ? suite_logo_data_uri() : null;
+        ?>
+<header class="tu-pubbar">
+  <a href="<?= $e($base . '/planning/events.php') ?>" class="tu-pubbar-brand">
+    <?php if ($logo): ?>
+      <span class="tu-pubbar-logo"><img src="<?= $e($logo) ?>" alt=""></span>
+    <?php else: ?>
+      <span class="tu-pubbar-logo tu-pubbar-logo-txt">TU</span>
+    <?php endif; ?>
+    <span class="tu-pubbar-name">Touraine-Ukraine</span>
+  </a>
+  <a href="<?= $e($loginUrl) ?>" class="tu-btn tu-btn-s tu-btn-sm">Connexion</a>
+</header>
+<?php
+        suite_nav_scripts($base);
+    }
+}
+
 if (!function_exists('suite_nav_render')) {
 
 function suite_nav_render(string $activeModule = '', string $activeItem = ''): void {
@@ -15,6 +48,12 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
     $isAdmin      = in_array($role, ['admin', 'admin_plus', 'super_admin'], true);
     $isAdminPlus  = in_array($role, ['admin_plus', 'super_admin'], true);
     $isSuperAdmin = ($role === 'super_admin');
+
+    if (!$isAdmin) {
+        $loginUrl = function_exists('suite_login_url') ? suite_login_url() : ($base . '/admin/login.php');
+        suite_nav_public_render($base, $loginUrl);
+        return;
+    }
 
     // Accès aux modules (droits gérés par le super admin). Un visiteur non
     // connecté ne voit que le planning : seules les pages du planning sont
@@ -529,9 +568,7 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
   });
 })();
 </script>
-<script src="<?= htmlspecialchars($base, ENT_QUOTES, 'UTF-8') ?>/assets/js/tu_select.js?v=<?= (int)@filemtime(dirname(__DIR__) . '/assets/js/tu_select.js') ?>" defer></script>
-<script src="<?= htmlspecialchars($base, ENT_QUOTES, 'UTF-8') ?>/assets/js/tu_menu.js?v=<?= (int)@filemtime(dirname(__DIR__) . '/assets/js/tu_menu.js') ?>" defer></script>
-<script src="<?= htmlspecialchars($base, ENT_QUOTES, 'UTF-8') ?>/assets/js/tu_phone.js?v=<?= (int)@filemtime(dirname(__DIR__) . '/assets/js/tu_phone.js') ?>" defer></script>
+<?php suite_nav_scripts($base); ?>
 <?php
     // Centre d'aide : bouton « ? » + panneau latéral (admins connectés, hors page Aide)
     require_once __DIR__ . '/help.php';

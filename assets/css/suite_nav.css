@@ -662,10 +662,8 @@ body.tu-v2 *, body.tu-v2 *::before, body.tu-v2 *::after {
 .tu-form-bar .tu-lbl { line-height: 16px; }
 .tu-form-bar .tu-input { box-sizing: border-box; height: 38px; }
 .tu-form-bar > .tu-btn { box-sizing: border-box; height: 38px; margin-top: 20px; justify-content: center; }
-.tu-form-bar > .tu-form-check,
-.tu-form-bar > .tu-form-note { margin-top: 20px; min-height: 38px; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
-.tu-form-bar > .tu-form-check { cursor: pointer; }
-.tu-form-bar > .tu-form-note { font-size: 12px; color: var(--tu-ink-300); }
+.tu-form-bar > .tu-form-check, .tu-form-bar > .tu-form-note { margin-top: 20px; }
+.tu-form-bar > .tu-form-note { min-height: 38px; display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--tu-ink-300); }
 @media (max-width: 640px) {
   .tu-form-bar > .tu-form-field { flex: 1 1 100%; min-width: 0 !important; max-width: none !important; width: auto !important; }
   .tu-form-bar > .tu-btn { flex: 1 1 100%; }
@@ -1320,8 +1318,26 @@ body.tu-sb-open .tu-hamburger {
 :where(input[type=checkbox], input[type=radio]):disabled { opacity: .45; cursor: not-allowed; }
 .tu-danger-zone input[type=checkbox]:checked { background-color: var(--tu-red-main); border-color: var(--tu-red-main); }
 
-/* Libellé cliquable avec case à cocher : <label class="tu-form-check"> (voir aussi .tu-form-bar) */
-.tu-form-check { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+/* Option à cocher « pastille » (même rendu que la liste des signatures) :
+   <label class="tu-form-check"><input type="checkbox" name="…"> Libellé</label>
+   La case native est masquée ; l'état coché = fond sable, bordure et texte ambrés, ✓ à droite.
+   (L'input doit être enfant direct du label.) Voir aussi .tu-form-bar. */
+.tu-form-check {
+  position: relative; display: inline-flex; align-items: center; gap: 10px;
+  box-sizing: border-box; min-height: 38px; padding: 6px 14px;
+  border: 1.5px solid var(--tu-ink-100); border-radius: 10px;
+  background: var(--tu-white, #fff);
+  font-size: 13px; font-weight: 600; color: var(--tu-ink-500);
+  cursor: pointer; user-select: none;
+  transition: background-color .12s, border-color .12s, color .12s;
+}
+.tu-form-check > input[type=checkbox] { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; pointer-events: none; }
+.tu-form-check::after { content: "✓"; margin-left: auto; padding-left: 6px; font-weight: 800; color: transparent; }
+.tu-form-check:hover { background: var(--tu-sand-50); border-color: var(--tu-ink-200); }
+.tu-form-check:has(> input:checked) { background: var(--tu-sand-50); border-color: var(--tu-amber-300); color: var(--tu-amber-600); font-weight: 700; }
+.tu-form-check:has(> input:checked)::after { color: var(--tu-amber-600); }
+.tu-form-check:has(> input:focus-visible) { box-shadow: 0 0 0 3px rgba(232,146,74,.28); }
+.tu-form-check:has(> input:disabled) { opacity: .5; cursor: not-allowed; }
 
 /* ═══════════════════════════════════════
    MENU « 3 POINTS » (actions de ligne) — assets/js/tu_menu.js
@@ -1385,4 +1401,30 @@ body.tu-sb-open .tu-hamburger {
   .tu-tbl-resp td[data-label]::before { content: attr(data-label); font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--tu-ink-300); text-align: left; }
   .tu-tbl-resp td.tu-td-main { padding-right: 56px !important; }
   .tu-tbl-resp td.tu-td-acts { position: absolute; top: 8px; right: 8px; width: auto; padding: 0 !important; }
+}
+
+
+/* ═══════════════════════════════════════
+   BARRE PUBLIQUE (visiteur non connecté : pas de sidebar)
+═══════════════════════════════════════ */
+.tu-pubbar {
+  position: fixed; top: 0; left: 0; right: 0; height: 56px; z-index: 60;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 0 24px;
+  background: var(--tu-white);
+  border-bottom: 1px solid var(--tu-ink-100);
+}
+.tu-pubbar-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--tu-ink-900); min-width: 0; }
+.tu-pubbar-logo {
+  width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--tu-ink-900); color: #fff; font-weight: 800; font-size: 13px; overflow: hidden;
+}
+.tu-pubbar-logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.tu-pubbar-name { font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tu-pubbar ~ .tu-main { margin-left: 0 !important; padding-top: 56px !important; }
+.tu-pubbar ~ .tu-main .tu-topbar { top: 56px; padding-left: 24px !important; }
+@media (max-width: 900px) {
+  .tu-pubbar { padding: 0 14px; }
+  .tu-pubbar ~ .tu-main .tu-topbar { padding-left: 14px !important; }
 }
