@@ -118,6 +118,15 @@ if (!function_exists('suite_mail_send')) {
     }
 }
 
+if (!function_exists('suite_mail_abs_url')) {
+    /** URL absolue d'une page de la suite (liens des e-mails), ex. suite_mail_abs_url('/planning/events.php'). */
+    function suite_mail_abs_url(string $path): string {
+        $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+        $base  = function_exists('suite_base') ? suite_base() : '';
+        return ($https ? 'https' : 'http') . '://' . (string)($_SERVER['HTTP_HOST'] ?? '') . $base . $path;
+    }
+}
+
 if (!function_exists('suite_mail_html')) {
     /**
      * Gabarit HTML commun des e-mails de la suite (mise en page en tableaux, styles en ligne :
@@ -125,7 +134,7 @@ if (!function_exists('suite_mail_html')) {
      * @param array<int,array{0:string,1:string}> $rows  lignes « libellé » / « valeur »
      * @param array{0:string,1:string}|null $button       [texte, url]
      */
-    function suite_mail_html(string $title, string $lead, array $rows = [], ?array $button = null, string $footer = '', string $badge = ''): string {
+    function suite_mail_html(string $title, string $lead, array $rows = [], ?array $button = null, string $footer = '', string $badge = '', string $preheader = ''): string {
         $e = static fn(string $t): string => htmlspecialchars($t, ENT_QUOTES, 'UTF-8');
         $rowsHtml = '';
         foreach ($rows as $i => [$k, $v]) {
@@ -138,6 +147,7 @@ if (!function_exists('suite_mail_html')) {
         $foot = $footer !== '' ? '<p style="margin:0;font-size:12px;line-height:1.5;color:#a89880;">' . $e($footer) . '</p>' : '';
         return '<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' . $e($title) . '</title></head>'
             . '<body style="margin:0;padding:0;background:#f5f0e8;">'
+            . ($preheader !== '' ? '<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">' . $e($preheader) . '</div>' : '')
             . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0e8;"><tr><td align="center" style="padding:28px 12px;">'
             . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Helvetica,Arial,sans-serif;">'
             . '<tr><td style="padding:0 4px 14px;font-size:15px;font-weight:800;color:#3d3428;letter-spacing:.2px;"><span style="color:#d4732a;">&#9679;</span>&nbsp; Touraine-Ukraine</td></tr>'
