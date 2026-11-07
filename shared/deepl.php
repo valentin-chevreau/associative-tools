@@ -60,7 +60,7 @@ if (!function_exists('suite_deepl_translate')) {
         $text = trim($text);
         if ($text === '') return ['ok' => true, 'text' => '', 'error' => null];
 
-        $codes = ['FR' => 'FR', 'UK' => 'UK', 'EN' => 'EN-GB'];
+        $codes = ['FR' => 'FR', 'UK' => 'UK', 'EN' => 'EN-US'];
         $srcCodes = ['FR' => 'FR', 'UK' => 'UK', 'EN' => 'EN'];
         if (!isset($srcCodes[$source], $codes[$target]) || $source === $target) {
             return ['ok' => false, 'text' => '', 'error' => 'Langue non prise en charge.'];
