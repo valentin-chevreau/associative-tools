@@ -134,6 +134,10 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
          class="tu-sb-item <?= _nav_active('planning-create', $activeItem, $activeModule, 'planning') ?>">
         Créer un événement
       </a>
+      <a href="<?= h2($base . '/planning/admin/poster.php') ?>"
+         class="tu-sb-item <?= _nav_active('planning-posters', $activeItem, $activeModule, 'planning') ?>">
+        Affiches
+      </a>
       <?php endif; ?>
     </div>
     <?php endif; ?>
