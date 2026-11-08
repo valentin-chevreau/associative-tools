@@ -96,7 +96,7 @@ if ($key === ''): ?>
             <?php if ($m['suppressed']): ?>
               <button name="action" value="unsuppress" class="tu-btn tu-btn-s tu-btn-sm">Réinscrire</button>
             <?php else: ?>
-              <button name="action" value="suppress" class="tu-btn tu-btn-s tu-btn-sm" onclick="return confirm('Cette personne ne recevra plus aucune newsletter, dans aucune liste. Continuer ?');">Désinscrire</button>
+              <button name="action" value="suppress" class="tu-btn tu-btn-s tu-btn-sm" data-confirm="Cette personne ne recevra plus aucune newsletter, dans aucune liste. Continuer ?">Désinscrire</button>
             <?php endif; ?>
             <button name="action" value="remove" class="tu-btn tu-btn-s tu-btn-sm">Retirer de la liste</button>
           </form>

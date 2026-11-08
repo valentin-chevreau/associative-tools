@@ -1212,14 +1212,14 @@ elseif (isset($_POST['do_helloasso_sync_now'])) $activeTab = 'sync';
                     </form>
                   <?php endif; ?>
                   <?php if (!empty($r['receipt_number']) && filter_var($email, FILTER_VALIDATE_EMAIL)): ?>
-                    <form method="post" action="<?= h($base) ?>/donations/receipt_send.php" style="display:inline;" onsubmit="return confirm('Envoyer le reçu <?= h($r['receipt_number']) ?> par e-mail à <?= h($email) ?> ?');">
+                    <form method="post" action="<?= h($base) ?>/donations/receipt_send.php" style="display:inline;" data-confirm="Envoyer le reçu <?= h($r['receipt_number']) ?> par e-mail à <?= h($email) ?> ?">
                       <input type="hidden" name="donation_id" value="<?= (int)$r['id'] ?>">
                       <input type="hidden" name="return" value="list">
                       <input type="hidden" name="year" value="<?= (int)$year ?>">
                       <button type="submit" class="tu-btn tu-btn-xs">Envoyer par email</button>
                     </form>
                   <?php endif; ?>
-                  <form method="post" style="display:inline;" onsubmit="return confirm('Supprimer ce don manuel ?');">
+                  <form method="post" style="display:inline;" data-confirm="Supprimer ce don manuel ?">
                     <input type="hidden" name="do_manual_delete" value="1">
                     <input type="hidden" name="donation_id" value="<?= (int)$r['id'] ?>">
                     <button type="submit" class="tu-btn tu-btn-d tu-btn-xs">Supprimer</button>

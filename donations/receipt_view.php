@@ -79,6 +79,7 @@ a.btn.btn-primary{color:#fff}
   .actions,.flash,.mailnote{display:none !important}
 }
 </style>
+<script src="<?= h($base) ?>/assets/js/tu_confirm.js?v=<?= (int)@filemtime(dirname(__DIR__) . '/assets/js/tu_confirm.js') ?>" defer></script>
 </head>
 <body>
 
@@ -98,12 +99,12 @@ a.btn.btn-primary{color:#fff}
           <a class="btn" target="_blank" href="<?= h($base) ?>/donations/receipt_pdf.php?id=<?= $id ?>">Télécharger PDF</a>
           <?php if (filter_var($d['donor_email'], FILTER_VALIDATE_EMAIL)): ?>
             <form method="post" action="<?= h($base) ?>/donations/receipt_send.php" style="display:inline"
-                  onsubmit="return confirm('Envoyer le reçu fiscal <?= h($d['number']) ?> par e-mail à <?= h($d['donor_email']) ?> ?');">
+                  data-confirm="Envoyer le reçu fiscal <?= h($d['number']) ?> par e-mail à <?= h($d['donor_email']) ?> ?">
               <input type="hidden" name="donation_id" value="<?= $id ?>">
               <button class="btn btn-mail" type="submit">Envoyer par email</button>
             </form>
           <?php endif; ?>
-          <button class="btn btn-primary" onclick="window.print()">Imprimer</button>
+          <a class="btn btn-primary" target="_blank" href="<?= h($base) ?>/donations/receipt_pdf.php?id=<?= $id ?>">Imprimer</a>
         <?php endif; ?>
       </div>
     </div>

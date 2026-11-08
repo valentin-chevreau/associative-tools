@@ -204,7 +204,7 @@ $base = suite_base();
                   <button type="submit" class="tu-btn tu-btn-g tu-btn-sm" style="font-size:11px;padding:4px 8px;">Marquer contactée</button>
                 </form>
               <?php elseif ($r['peut_demarquer']): ?>
-                <form method="POST" onsubmit="return confirm('Retirer le marquage \'contactée\' pour <?= (int)$annee ?> ?');">
+                <form method="POST" data-confirm="Retirer le marquage 'contactée' pour <?= (int)$annee ?> ?">
                   <input type="hidden" name="action" value="marquer_annee"/>
                   <input type="hidden" name="annee" value="<?= (int)$annee ?>"/>
                   <input type="hidden" name="contacte" value="0"/>
@@ -233,7 +233,7 @@ $base = suite_base();
                 <span style="flex-shrink:0;"><?= $typeLabels[$e['type']] ?? $e['type'] ?></span>
                 <span style="flex:1;"><?= h($e['commentaire']) ?></span>
                 <?php if (!empty($e['auteur'])): ?><span style="flex-shrink:0;color:var(--tu-ink-300);font-size:12px;"><?= h($e['auteur']) ?></span><?php endif; ?>
-                <form method="POST" onsubmit="return confirm('Supprimer cette entrée d\'historique ?');" style="flex-shrink:0;">
+                <form method="POST" data-confirm="Supprimer cette entrée d'historique ?" style="flex-shrink:0;">
                   <input type="hidden" name="action" value="supprimer_suivi"/>
                   <input type="hidden" name="suivi_id" value="<?= (int)$e['id'] ?>"/>
                   <button type="submit" title="Supprimer" style="border:none;background:transparent;color:var(--tu-ink-300);cursor:pointer;font-size:14px;line-height:1;padding:2px 4px;">🗑</button>
@@ -273,11 +273,11 @@ $base = suite_base();
     <div class="tu-card" style="padding:18px;border-color:rgba(192,67,42,.2);">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--tu-red-main);margin-bottom:12px;">Zone dangereuse</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <form method="POST" onsubmit="return confirm('Désactiver cette fiche ? Elle disparaîtra des listes mais l\'historique est conservé.');">
+        <form method="POST" data-confirm="Désactiver cette fiche ? Elle disparaîtra des listes mais l'historique est conservé.">
           <input type="hidden" name="action" value="desactiver"/>
           <button type="submit" class="tu-btn tu-btn-s tu-btn-sm" style="color:var(--tu-red-main);">Désactiver cette fiche</button>
         </form>
-        <form method="POST" onsubmit="return confirm('Supprimer DÉFINITIVEMENT cette fiche et tout son historique de suivi ? Cette action est irréversible.');">
+        <form method="POST" data-confirm="Supprimer DÉFINITIVEMENT cette fiche et tout son historique de suivi ? Cette action est irréversible.">
           <input type="hidden" name="action" value="supprimer"/>
           <button type="submit" class="tu-btn tu-btn-s tu-btn-sm" style="color:#fff;background:var(--tu-red-main);border-color:var(--tu-red-main);">🗑 Supprimer définitivement</button>
         </form>

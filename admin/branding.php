@@ -211,7 +211,7 @@ suite_nav_render('users', '');
     </form>
 
     <?php if ($logo): ?>
-      <form method="post" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--tu-ink-100,#eadfce);" onsubmit="return confirm('Supprimer le logo et revenir à la pastille « TU » ?');">
+      <form method="post" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--tu-ink-100,#eadfce);" data-confirm="Supprimer le logo et revenir à la pastille « TU » ?">
         <input type="hidden" name="action" value="delete">
         <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
         <button type="submit" class="tu-btn tu-btn-d tu-btn-sm">Supprimer le logo</button>

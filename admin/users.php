@@ -452,12 +452,12 @@ suite_nav_render('users', '');
                           </form>
                         <?php endforeach; ?>
                         <div class="tu-kebab-sep"></div>
-                        <form method="post" onsubmit="return confirm('Régénérer le code de <?= h(addslashes($fullName)) ?> ?');">
+                        <form method="post" data-confirm="Régénérer le code de <?= h($fullName) ?> ?">
                           <input type="hidden" name="action" value="regenerate_code">
                           <input type="hidden" name="volunteer_id" value="<?= (int)$v['id'] ?>">
                           <button type="submit" role="menuitem" class="tu-kebab-item">Nouveau code</button>
                         </form>
-                        <form method="post" onsubmit="return confirm('Révoquer l\'accès admin de <?= h(addslashes($fullName)) ?> ?');">
+                        <form method="post" data-confirm="Révoquer l'accès admin de <?= h($fullName) ?> ?">
                           <input type="hidden" name="action" value="revoke_access">
                           <input type="hidden" name="volunteer_id" value="<?= (int)$v['id'] ?>">
                           <button type="submit" role="menuitem" class="tu-kebab-item danger">Révoquer l'accès</button>
@@ -467,14 +467,14 @@ suite_nav_render('users', '');
                       <?php if (is_super_admin() && (int)$v['id'] !== (int)current_volunteer_id()): ?>
                         <a href="permissions.php?user=<?= (int)$v['id'] ?>" role="menuitem" class="tu-kebab-item">Droits particuliers</a>
                       <?php endif; ?>
-                      <form method="post" onsubmit="return confirm('<?= $isActive ? 'Désactiver' : 'Réactiver' ?> le compte de <?= h(addslashes($fullName)) ?> ?');">
+                      <form method="post" data-confirm="<?= $isActive ? 'Désactiver' : 'Réactiver' ?> le compte de <?= h($fullName) ?> ?">
                         <input type="hidden" name="action" value="toggle_active">
                         <input type="hidden" name="volunteer_id" value="<?= (int)$v['id'] ?>">
                         <input type="hidden" name="new_status" value="<?= $isActive ? 0 : 1 ?>">
                         <button type="submit" role="menuitem" class="tu-kebab-item<?= $isActive ? ' danger' : '' ?>"><?= $isActive ? 'Désactiver le compte' : 'Réactiver le compte' ?></button>
                       </form>
                       <?php if (is_super_admin() && (int)$v['id'] !== (int)current_volunteer_id()): ?>
-                        <form method="post" onsubmit="return confirm('Supprimer <?= h(addslashes($fullName)) ?> ?\n\nLe compte disparaît des listes et perd tout accès, mais son historique (inscriptions au planning, présences, journal) est conservé.');">
+                        <form method="post" data-confirm="Supprimer <?= h($fullName) ?> ?&#10;&#10;Le compte disparaît des listes et perd tout accès, mais son historique (inscriptions au planning, présences, journal) est conservé.">
                           <input type="hidden" name="action" value="delete_user">
                           <input type="hidden" name="volunteer_id" value="<?= (int)$v['id'] ?>">
                           <button type="submit" role="menuitem" class="tu-kebab-item danger">Supprimer</button>

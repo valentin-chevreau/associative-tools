@@ -213,12 +213,22 @@ mailing_page_start('Nouvelle newsletter', 'mailing-compose', 'Nouvelle newslette
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <button name="action" value="save" class="tu-btn tu-btn-s">Enregistrer le brouillon</button>
         <button name="action" value="test" class="tu-btn tu-btn-s">M'envoyer un test</button>
-        <button name="action" value="send" class="tu-btn tu-btn-p" onclick="return confirm('Envoyer cette newsletter à ' + document.getElementById('mlTotalN').textContent + ' personne(s) ?');" <?= $mailOk ? '' : 'disabled' ?>>Envoyer / planifier</button>
+        <button name="action" value="send" class="tu-btn tu-btn-p" id="mlSendBtn" data-confirm="Envoyer cette newsletter ?" data-confirm-title="Envoyer la newsletter" data-confirm-label="Envoyer" data-confirm-tone="default" <?= $mailOk ? '' : 'disabled' ?>>Envoyer / planifier</button>
       </div>
     </div>
   </div>
 </form>
 
+<script>
+(function () {
+  var b = document.getElementById('mlSendBtn');
+  if (!b) return;
+  b.addEventListener('click', function () {
+    var n = (document.getElementById('mlTotalN') || {}).textContent || '0';
+    b.dataset.confirm = 'Envoyer cette newsletter à ' + n.trim() + ' personne(s) ?';
+  }, true);
+})();
+</script>
 <script src="<?= $h($base) ?>/assets/js/mailing_recipients.js?v=<?= $assetV('/assets/js/mailing_recipients.js') ?>"></script>
 <script src="<?= $h($base) ?>/assets/js/mailing_editor.js?v=<?= $assetV('/assets/js/mailing_editor.js') ?>"></script>
 <?php endif; ?>

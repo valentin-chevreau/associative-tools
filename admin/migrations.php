@@ -416,7 +416,7 @@ function mig_url(array $o = []): string {
           Les migrations sont exécutées l'une après l'autre ; la première erreur arrête tout le lot. Les fichiers « modifiés depuis » ne sont jamais rejoués dans ce lot.
           <strong>Faites une sauvegarde de la base avant d'appliquer</strong> : une migration modifie réellement la structure ou les données et n'est pas annulable.
         </div>
-        <form method="post" onsubmit="return confirm('Appliquer <?= count($pendingList) ?> migration(s) sur cette base ?\n\nAvez-vous une sauvegarde récente ?');">
+        <form method="post" data-confirm="Appliquer <?= count($pendingList) ?> migration(s) sur cette base ?&#10;&#10;Avez-vous une sauvegarde récente ?">
           <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
           <input type="hidden" name="action" value="apply_all">
           <button type="submit" class="tu-btn tu-btn-p">Appliquer toutes les migrations en attente</button>
@@ -492,11 +492,9 @@ function mig_url(array $o = []): string {
 
             <div class="mig-actions">
               <?php if ($state !== 'applied'): ?>
-                <form method="post" onsubmit="return confirm(<?= h(json_encode(
-                    ($state === 'modified'
+                <form method="post" data-confirm="<?= h($state === 'modified'
                         ? "ATTENTION : " . $file . " a été modifié depuis son application. Le rejouer peut échouer ou dupliquer des changements. Continuer ?"
-                        : "Exécuter " . $file . " sur cette base ?\nCette action modifie réellement la structure/les données."),
-                    JSON_UNESCAPED_UNICODE)) ?>);">
+                        : "Exécuter " . $file . " sur cette base ?\nCette action modifie réellement la structure/les données.") ?>" data-confirm-tone="danger" data-confirm-label="<?= $state === 'modified' ? 'Rejouer' : 'Exécuter' ?>" data-confirm-title="Modifier la base de données">
                   <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
                   <input type="hidden" name="action" value="apply">
                   <input type="hidden" name="module" value="<?= h($mod) ?>">
@@ -504,7 +502,7 @@ function mig_url(array $o = []): string {
                   <?php if ($state === 'modified'): ?><input type="hidden" name="confirm_modified" value="1"><?php endif; ?>
                   <button type="submit" class="tu-btn tu-btn-p tu-btn-xs"><?= $state === 'failed' ? 'Réessayer' : ($state === 'modified' ? 'Rejouer' : 'Appliquer') ?></button>
                 </form>
-                <form method="post" onsubmit="return confirm(<?= h(json_encode("Marquer " . $file . " comme déjà appliquée SANS l'exécuter ?", JSON_UNESCAPED_UNICODE)) ?>);">
+                <form method="post" data-confirm="<?= h("Marquer " . $file . " comme déjà appliquée SANS l'exécuter ?") ?>" data-confirm-label="Marquer">
                   <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
                   <input type="hidden" name="action" value="mark_applied">
                   <input type="hidden" name="module" value="<?= h($mod) ?>">

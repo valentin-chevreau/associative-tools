@@ -11,7 +11,7 @@ if (!function_exists('suite_nav_scripts')) {
     /** Scripts communs de l'interface (sélecteurs, menus, téléphone). */
     function suite_nav_scripts(string $base): void {
         $root = dirname(__DIR__);
-        foreach (['tu_select', 'tu_menu', 'tu_phone'] as $js) {
+        foreach (['tu_select', 'tu_menu', 'tu_phone', 'tu_confirm'] as $js) {
             echo '<script src="' . htmlspecialchars($base, ENT_QUOTES, 'UTF-8') . '/assets/js/' . $js . '.js?v='
                . (int)@filemtime($root . '/assets/js/' . $js . '.js') . '" defer></script>' . "\n";
         }

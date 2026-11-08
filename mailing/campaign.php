@@ -79,11 +79,11 @@ mailing_page_start((string)$c['subject'], 'mailing-history', 'Détail');
         <form method="post" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">
           <input type="hidden" name="csrf" value="<?= $h($csrf) ?>"><input type="hidden" name="id" value="<?= $id ?>">
           <?php if (in_array($c['status'], ['queued', 'sending'], true)): ?>
-            <button name="action" value="cancel" class="tu-btn tu-btn-s" onclick="return confirm('Annuler cet envoi ? Les messages restants ne partiront pas.');">Annuler l'envoi</button>
+            <button name="action" value="cancel" class="tu-btn tu-btn-s" data-confirm="Annuler cet envoi ? Les messages restants ne partiront pas.">Annuler l'envoi</button>
           <?php endif; ?>
           <button name="action" value="duplicate" class="tu-btn tu-btn-s">Dupliquer en brouillon</button>
           <?php if ($c['status'] === 'cancelled'): ?>
-            <button name="action" value="delete" class="tu-btn tu-btn-s" onclick="return confirm('Supprimer définitivement cette newsletter ?');">Supprimer</button>
+            <button name="action" value="delete" class="tu-btn tu-btn-s" data-confirm="Supprimer définitivement cette newsletter ?">Supprimer</button>
           <?php endif; ?>
         </form>
       </div>

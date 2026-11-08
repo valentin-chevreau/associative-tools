@@ -331,7 +331,7 @@ suite_nav_render('users', '');
             <div style="font-weight:800;font-size:14.5px;"><?= h($g['name']) ?></div>
             <div style="display:flex;gap:10px;">
               <button type="button" class="tu-btn-link" onclick='openRenameGroupModal(<?= $gid ?>, <?= json_encode($g['name'], JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>renommer</button>
-              <form method="post" style="display:inline;" onsubmit="return confirm('Supprimer le groupe « <?= h(addslashes($g['name'])) ?> » ? Les utilisateurs eux-mêmes ne sont pas supprimés.');">
+              <form method="post" style="display:inline;" data-confirm="Supprimer le groupe « <?= h($g['name']) ?> » ? Les utilisateurs eux-mêmes ne sont pas supprimés.">
                 <input type="hidden" name="action" value="delete_group">
                 <input type="hidden" name="group_id" value="<?= $gid ?>">
                 <button type="submit" class="tu-btn-link danger">supprimer</button>

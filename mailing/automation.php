@@ -105,7 +105,7 @@ mailing_page_start($def['label'], 'mailing-auto', $def['label']);
     <button name="action" value="test" class="tu-btn tu-btn-s">M'envoyer un test</button>
     <a href="automations.php" class="tu-btn tu-btn-s">Retour</a>
     <?php if ($cfg['customized']): ?>
-      <button name="action" value="reset" class="tu-btn tu-btn-s" style="margin-left:auto;" onclick="return confirm('Revenir au texte par défaut ? Votre version sera perdue.');" formnovalidate>Rétablir le texte par défaut</button>
+      <button name="action" value="reset" class="tu-btn tu-btn-s" style="margin-left:auto;" data-confirm="Revenir au texte par défaut ? Votre version sera perdue." formnovalidate>Rétablir le texte par défaut</button>
     <?php endif; ?>
   </div>
 </form>
