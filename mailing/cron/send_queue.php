@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 // mailing/cron/send_queue.php
 //
-// Envoie les newsletters en attente par petits lots : lance les campagnes dont l'heure est venue
-// (en figeant leur liste de destinataires), puis envoie au plus MAILING_BATCH_SIZE messages.
+// Envoie par petits lots (MAILING_BATCH_SIZE messages au plus par passage) : d'abord les messages automatiques
+// dus, puis les newsletters en attente (en lançant celles dont l'heure est venue, liste de destinataires figée).
 //
 // Usage (CLI uniquement) :
 //   php send_queue.php              # un lot (MAILING_BATCH_SIZE messages)
@@ -20,7 +20,7 @@ if (PHP_SAPI !== 'cli') {
 }
 
 require_once dirname(__DIR__, 2) . '/shared/bootstrap.php';
-require_once dirname(__DIR__) . '/includes/mailing.php';
+require_once dirname(__DIR__) . '/includes/automations.php';
 
 $batch = MAILING_BATCH_SIZE;
 foreach (array_slice($argv, 1) as $arg) {
@@ -38,7 +38,13 @@ if (!mailing_tables_ready($pdo)) exit(0); // migration pas encore exécutée
 if ((int)$pdo->query("SELECT GET_LOCK('mailing_send_queue', 0)")->fetchColumn() !== 1) exit(0);
 
 try {
-    $r = mailing_send_batch($pdo, $batch);
+    // Messages automatiques d'abord (un rappel de la veille ne doit pas attendre la fin d'une grosse newsletter).
+    $a = mailing_auto_tables_ready($pdo) ? mailing_auto_run($pdo, $batch) : ['sent' => 0, 'failed' => 0];
+    if ($a['sent'] || $a['failed']) {
+        echo date('c') . " automatiques: {$a['sent']} envoyé(s), {$a['failed']} en échec\n";
+    }
+    $left = $batch - $a['sent'] - $a['failed'];
+    $r = $left > 0 ? mailing_send_batch($pdo, $left) : ['sent' => 0, 'failed' => 0];
     if ($r['sent'] || $r['failed']) {
         echo date('c') . " mailing: {$r['sent']} envoyé(s), {$r['failed']} en échec\n";
     }

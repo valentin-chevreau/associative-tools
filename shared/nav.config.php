@@ -279,6 +279,7 @@ if (!function_exists('nav_items')) {
     add_if_exists($mailingChildren, 'Nouvelle newsletter', $root . '/mailing/compose.php', $base . '/mailing/compose.php');
     add_if_exists($mailingChildren, 'Listes de diffusion', $root . '/mailing/lists.php', $base . '/mailing/lists.php');
     add_if_exists($mailingChildren, 'Historique', $root . '/mailing/index.php', $base . '/mailing/index.php');
+    add_if_exists($mailingChildren, 'Automatiques', $root . '/mailing/automations.php', $base . '/mailing/automations.php');
     if (!empty($mailingChildren)) {
       $items[] = [
         'label' => 'Mailing',

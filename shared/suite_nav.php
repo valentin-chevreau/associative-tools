@@ -375,6 +375,10 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
          class="tu-sb-item <?= _nav_active('mailing-history', $activeItem, $activeModule, 'mailing') ?>">
         Historique
       </a>
+      <a href="<?= h2($base . '/mailing/automations.php') ?>"
+         class="tu-sb-item <?= _nav_active('mailing-auto', $activeItem, $activeModule, 'mailing') ?>">
+        Automatiques
+      </a>
     </div>
     <?php endif; ?>
     <?php endif; ?>

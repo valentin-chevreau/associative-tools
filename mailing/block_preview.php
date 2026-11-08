@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !mailing_csrf_ok()) {
 
 $pdo = mailing_pdo();
 $raw = json_decode((string)($_POST['blocks'] ?? '[]'), true);
-$blocks = mailing_blocks_sanitize($pdo, $raw);
+$blocks = mailing_blocks_sanitize($pdo, $raw, ($_POST['vars'] ?? '') === '1');
 $base = suite_base();
 echo json_encode([
     'blocks' => $blocks,

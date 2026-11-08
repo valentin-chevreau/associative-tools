@@ -263,12 +263,27 @@ function mailing_send_batch(PDO $pdo, int $limit = MAILING_BATCH_SIZE): array {
     return ['sent' => $sent, 'failed' => $failed];
 }
 
-/** Désinscrit l'adresse liée à un jeton. Renvoie l'adresse, ou null si le jeton est inconnu. */
-function mailing_unsubscribe(PDO $pdo, string $token): ?string {
+/** Adresse et campagne liées à un jeton de désinscription (newsletter ou message automatique), ou null. */
+function mailing_token_owner(PDO $pdo, string $token): ?array {
     if (!preg_match('/^[a-f0-9]{32}$/', $token)) return null;
     $st = $pdo->prepare("SELECT email, campaign_id FROM mailing_recipients WHERE token = ?");
     $st->execute([$token]);
     $r = $st->fetch(PDO::FETCH_ASSOC);
+    if (!$r) {
+        try {
+            $st = $pdo->prepare("SELECT email, NULL AS campaign_id FROM mailing_auto_log WHERE token = ?");
+            $st->execute([$token]);
+            $r = $st->fetch(PDO::FETCH_ASSOC);
+        } catch (Throwable) {
+            $r = false; // migration des messages automatiques pas encore exécutée
+        }
+    }
+    return $r ?: null;
+}
+
+/** Désinscrit l'adresse liée à un jeton. Renvoie l'adresse, ou null si le jeton est inconnu. */
+function mailing_unsubscribe(PDO $pdo, string $token): ?string {
+    $r = mailing_token_owner($pdo, $token);
     if (!$r) return null;
     $pdo->prepare("INSERT IGNORE INTO mailing_suppressions (email, campaign_id) VALUES (?, ?)")->execute([$r['email'], $r['campaign_id']]);
     return (string)$r['email'];

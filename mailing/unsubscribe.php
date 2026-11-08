@@ -20,9 +20,7 @@ if (!mailing_tables_ready($pdo)) {
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $state = mailing_unsubscribe($pdo, $token) !== null ? 'done' : 'unknown';
 } else {
-    $st = $pdo->prepare("SELECT 1 FROM mailing_recipients WHERE token = ?");
-    $st->execute([preg_match('/^[a-f0-9]{32}$/', $token) ? $token : '']);
-    if (!$st->fetchColumn()) $state = 'unknown';
+    if (mailing_token_owner($pdo, $token) === null) $state = 'unknown';
 }
 ?><!doctype html>
 <html lang="fr">

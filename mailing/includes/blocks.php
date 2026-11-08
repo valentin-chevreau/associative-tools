@@ -97,13 +97,14 @@ function mailing_event_snapshot(PDO $pdo, int $id): ?array {
 /**
  * Nettoie les blocs reçus du navigateur : types connus, champs bornés, adresses web valides,
  * images existantes, évènements relus dans le planning.
+ * $allowVars : accepte une variable à la place d'une adresse web (messages automatiques, ex. {planning_url}).
  * @param mixed $raw
  * @return list<array<string,mixed>>
  */
-function mailing_blocks_sanitize(PDO $pdo, $raw): array {
+function mailing_blocks_sanitize(PDO $pdo, $raw, bool $allowVars = false): array {
     if (!is_array($raw)) return [];
     $str = static fn($v, int $max): string => mb_substr(trim(is_scalar($v) ? (string)$v : ''), 0, $max);
-    $url = static fn($v): string => mailing_valid_url($str($v, 500)) ? $str($v, 500) : '';
+    $url = static fn($v): string => (mailing_valid_url($str($v, 500)) || ($allowVars && preg_match('/^\{[a-z_]+\}$/', $str($v, 500)))) ? $str($v, 500) : '';
     $out = [];
     foreach (array_slice($raw, 0, MAILING_MAX_BLOCKS) as $b) {
         if (!is_array($b) || !isset(mailing_block_types()[$b['type'] ?? ''])) continue;

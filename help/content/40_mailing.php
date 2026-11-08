@@ -44,6 +44,19 @@ return [
             ],
             'keywords' => 'retirer décocher personne destinataire liste nominative',
         ],
+        'messages-automatiques' => [
+            'q'     => "Comment fonctionnent les messages automatiques ?",
+            'risk'  => 'reversible',
+            'pages' => ['automations.php', 'automation.php'],
+            'intro' => "Deux messages partent tout seuls : le **rappel la veille d'un créneau** (à partir de 18h) et la **bienvenue** aux nouveaux bénévoles.",
+            'steps' => [
+                "Allez dans **Mailing → Automatiques** et touchez **Activer** sur le message voulu. **Désactiver** l'arrête à tout moment.",
+                "**Modifier le texte** ouvre l'éditeur de blocs. Les variables comme **{prenom}** ou **{evenement}** sont remplacées pour chaque personne.",
+                "Touchez **M'envoyer un test** pour voir le message avec des valeurs d'exemple.",
+                "Un message n'est jamais envoyé deux fois pour la même inscription ou le même bénévole. À l'activation de la bienvenue, les bénévoles déjà présents ne la reçoivent pas.",
+            ],
+            'keywords' => 'rappel veille créneau bienvenue automatique activer désactiver',
+        ],
         'listes-diffusion' => [
             'q'     => "D'où viennent les listes de diffusion et comment les modifier ?",
             'risk'  => 'reversible',

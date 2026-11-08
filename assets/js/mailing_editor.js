@@ -56,6 +56,7 @@
       var fd = new FormData();
       fd.append('csrf', D.csrf);
       fd.append('blocks', JSON.stringify(clean()));
+      fd.append('vars', D.allowVars ? '1' : '0');
       var sent = blocks.map(function (b) { return b._u; });
       fetch(D.previewUrl, { method: 'POST', body: fd, credentials: 'same-origin' })
         .then(function (r) { return r.json(); })
@@ -196,7 +197,7 @@
       case 'quote': add(f('Citation', area(b, 'text', 4, false))); add(f('Auteur (facultatif)', text(b, 'author', '', 120))); break;
       case 'button':
         add(f('Texte du bouton', text(b, 'label', 'Faire un don', 60)));
-        add(f('Lien', text(b, 'url', 'https://', 500), 'Adresse complète, commençant par http:// ou https://.'));
+        add(f('Lien', text(b, 'url', 'https://', 500), 'Adresse complète, commençant par http:// ou https://' + (D.allowVars ? ' (ou une variable comme {planning_url}).' : '.')));
         break;
       case 'stats':
         b.items.forEach(function (it, k) {
