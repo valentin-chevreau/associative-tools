@@ -13,13 +13,36 @@ return [
             'steps' => [
                 "Allez dans **Mailing → Nouvelle newsletter**.",
                 "Cochez les **listes** de destinataires : le total sans doublon ni désinscrit s'affiche en direct.",
-                "Renseignez l'**objet** et le **texte** (une ligne vide sépare deux paragraphes), puis, si besoin, un bouton avec son lien.",
+                "Renseignez l'**objet**, puis composez le message avec des **blocs** (voir la question suivante).",
                 "Touchez **M'envoyer un test** pour voir le message dans votre boîte de réception.",
                 "Touchez **Envoyer / planifier**. Les messages partent par petits lots d'environ 20 par minute : l'envoi complet peut prendre quelques minutes.",
             ],
             'undo'  => " Une fois les messages partis, il est impossible de les rappeler : vous pouvez seulement annuler ceux qui n'ont pas encore été envoyés (page de la newsletter, **Annuler l'envoi**).",
             'link'  => ['label' => 'Nouvelle newsletter', 'path' => '/mailing/compose.php'],
             'keywords' => 'mail e-mail courriel envoi message liste planifier test',
+        ],
+        'blocs-newsletter' => [
+            'q'     => "Comment composer le contenu avec des blocs ?",
+            'risk'  => 'safe',
+            'pages' => ['compose.php'],
+            'steps' => [
+                "Dans l'étape **Contenu**, touchez le **+** pour ajouter un bloc : titre, texte, image, bouton, colonnes, citation, chiffres clés, évènement du planning ou séparateur.",
+                "Touchez un bloc pour le régler dans le panneau de droite. Les boutons au-dessus du bloc permettent de le **monter**, le **descendre**, le **dupliquer** ou le **supprimer**.",
+                "Pour une **image**, choisissez un fichier sur votre ordinateur : elle est allégée automatiquement. Pensez au texte alternatif.",
+                "Le bloc **Évènement** reprend le titre, la date et les horaires de l'évènement choisi dans le planning. Le bouton est facultatif : le planning n'est ouvert qu'aux bénévoles déclarés.",
+            ],
+            'keywords' => 'bloc image titre texte colonne citation chiffres évènement éditeur contenu',
+        ],
+        'exclure-destinataire' => [
+            'q'     => "Comment exclure quelqu'un d'une newsletter précise ?",
+            'risk'  => 'safe',
+            'pages' => ['compose.php'],
+            'steps' => [
+                "Dans l'étape **Destinataires**, ouvrez **Voir précisément qui reçoit ce message**.",
+                "Décochez la personne : elle est exclue de **cette newsletter seulement**, et reste dans ses listes. Le total se met à jour tout de suite.",
+                "Enregistrez le brouillon ou lancez l'envoi : l'exclusion est conservée avec la newsletter.",
+            ],
+            'keywords' => 'retirer décocher personne destinataire liste nominative',
         ],
         'listes-diffusion' => [
             'q'     => "D'où viennent les listes de diffusion et comment les modifier ?",

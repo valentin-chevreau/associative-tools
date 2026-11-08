@@ -15,4 +15,4 @@ if (!$c) { http_response_code(404); exit('Newsletter introuvable.'); }
 
 header('Content-Type: text/html; charset=UTF-8');
 header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; img-src https: data:");
-echo mailing_render_html($c, '#');
+echo mailing_render_html($c, '#', suite_base());

@@ -30,8 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         mailing_flash("Newsletter supprimée.");
         mailing_redirect('index.php');
     } elseif ($action === 'duplicate') {
-        $pdo->prepare("INSERT INTO mailing_campaigns (subject, preheader, title, body, button_label, button_url, audiences, created_by)
-            SELECT CONCAT(LEFT(subject, 180), ' (copie)'), preheader, title, body, button_label, button_url, audiences, ? FROM mailing_campaigns WHERE id = ?")
+        $pdo->prepare("INSERT INTO mailing_campaigns (subject, preheader, blocks, audiences, created_by)
+            SELECT CONCAT(LEFT(subject, 180), ' (copie)'), preheader, blocks, audiences, ? FROM mailing_campaigns WHERE id = ?")
             ->execute([current_volunteer_id(), $id]);
         mailing_flash("Copie créée en brouillon.");
         mailing_redirect('compose.php?id=' . (int)$pdo->lastInsertId());
@@ -45,6 +45,7 @@ $by = ['pending' => 0, 'sent' => 0, 'failed' => 0];
 foreach ($cnt->fetchAll(PDO::FETCH_KEY_PAIR) as $k => $n) $by[$k] = (int)$n;
 $total = (int)$c['recipients_total'];
 $done = $by['sent'] + $by['failed'];
+$nExcluded = count(mailing_campaign_exclusions($pdo, $id));
 $failures = $pdo->prepare("SELECT email, error FROM mailing_recipients WHERE campaign_id = ? AND status = 'failed' ORDER BY id LIMIT 100");
 $failures->execute([$id]);
 $failures = $failures->fetchAll(PDO::FETCH_ASSOC);
@@ -70,6 +71,7 @@ mailing_page_start((string)$c['subject'], 'mailing-history', 'Détail');
         <?php if ($total > 0): ?>
           <div class="ml-bar"><i style="width:<?= (int)round($done / $total * 100) ?>%"></i></div>
           <p style="margin:8px 0 0;font-size:13px;"><b><?= $by['sent'] ?></b> envoyés sur <?= $total ?><?= $by['failed'] ? ' · <b>' . $by['failed'] . '</b> en échec' : '' ?><?= $by['pending'] ? ' · ' . $by['pending'] . ' en attente' : '' ?></p>
+          <?php if ($nExcluded): ?><p class="ml-muted"><?= $nExcluded ?> personne<?= $nExcluded > 1 ? 's' : '' ?> décochée<?= $nExcluded > 1 ? 's' : '' ?> pour cet envoi.</p><?php endif; ?>
           <p class="ml-muted">« Envoyé » signifie remis au serveur de messagerie. Les rebonds (boîte pleine, adresse inconnue) ne sont pas suivis.</p>
         <?php else: ?>
           <p class="ml-muted" style="margin:0;">La liste des destinataires est figée au moment du départ.</p>

@@ -12,6 +12,7 @@ declare(strict_types=1);
  */
 
 require_once dirname(__DIR__, 2) . '/shared/mailer.php';
+require_once __DIR__ . '/blocks.php';
 
 /** Nombre de messages envoyés à chaque passage du cron (1 passage par minute conseillé). */
 const MAILING_BATCH_SIZE = 20;
@@ -102,9 +103,10 @@ function mailing_suppressed(PDO $pdo): array {
 /**
  * Calcule les destinataires d'un ensemble de listes.
  * @param list<string> $keys
+ * @param array<string,true> $skip adresses (minuscules) à ignorer : exclues de cette newsletter seulement
  * @return array{recipients:array<string,string>,per:array<string,int>,invalid:int,duplicates:int,suppressed:int}
  */
-function mailing_resolve(PDO $pdo, array $keys): array {
+function mailing_resolve(PDO $pdo, array $keys, array $skip = []): array {
     $audiences = mailing_audiences();
     $suppressed = mailing_suppressed($pdo);
     $recipients = [];
@@ -119,6 +121,7 @@ function mailing_resolve(PDO $pdo, array $keys): array {
         foreach (mailing_audience_rows($pdo, $key) as [$addr, $name]) {
             $addr = mb_strtolower(trim($addr));
             if (!filter_var($addr, FILTER_VALIDATE_EMAIL) || strlen($addr) > 190) { $invalid++; continue; }
+            if (isset($skip[$addr])) continue;
             if (isset($suppressed[$addr])) {
                 if (!isset($seenSuppressed[$addr])) { $seenSuppressed[$addr] = true; $suppressedN++; }
                 continue;
@@ -131,6 +134,40 @@ function mailing_resolve(PDO $pdo, array $keys): array {
         }
     }
     return ['recipients' => $recipients, 'per' => $per, 'invalid' => $invalid, 'duplicates' => $duplicates, 'suppressed' => $suppressedN];
+}
+
+/** @return array<string,true> adresses décochées pour cette newsletter */
+function mailing_campaign_exclusions(PDO $pdo, int $campaignId): array {
+    $st = $pdo->prepare("SELECT email FROM mailing_campaign_exclusions WHERE campaign_id = ?");
+    $st->execute([$campaignId]);
+    $set = [];
+    foreach ($st->fetchAll(PDO::FETCH_COLUMN) as $e) $set[(string)$e] = true;
+    return $set;
+}
+
+/** Remplace les exclusions d'une newsletter (adresses invalides ignorées). */
+function mailing_save_campaign_exclusions(PDO $pdo, int $campaignId, array $emails): void {
+    $pdo->prepare("DELETE FROM mailing_campaign_exclusions WHERE campaign_id = ?")->execute([$campaignId]);
+    $ins = $pdo->prepare("INSERT IGNORE INTO mailing_campaign_exclusions (campaign_id, email) VALUES (?, ?)");
+    foreach (array_slice($emails, 0, 5000) as $e) {
+        $e = mb_strtolower(trim((string)$e));
+        if (filter_var($e, FILTER_VALIDATE_EMAIL) && strlen($e) <= 190) $ins->execute([$campaignId, $e]);
+    }
+}
+
+/**
+ * Annuaire des destinataires possibles : une ligne par adresse, avec ses listes d'origine.
+ * @return array<string,array{name:string,lists:list<string>}>
+ */
+function mailing_directory(PDO $pdo): array {
+    $dir = [];
+    foreach (array_keys(mailing_audiences()) as $key) {
+        foreach (mailing_resolve($pdo, [$key])['recipients'] as $email => $name) {
+            $dir[$email]['name'] = ($dir[$email]['name'] ?? '') !== '' ? $dir[$email]['name'] : $name;
+            $dir[$email]['lists'][] = $key;
+        }
+    }
+    return $dir;
 }
 
 /** @return list<string> clés de listes valides extraites de la valeur stockée « a,b,c » */
@@ -155,57 +192,6 @@ function mailing_unsubscribe_url(string $siteUrl, string $token): string {
     return rtrim($siteUrl, '/') . '/mailing/unsubscribe.php?t=' . $token;
 }
 
-/** Texte brut → HTML : paragraphes séparés par une ligne vide, retours à la ligne conservés, liens cliquables. */
-function mailing_body_html(string $body): string {
-    $paras = preg_split('/\R{2,}/', trim($body)) ?: [];
-    $out = '';
-    foreach ($paras as $p) {
-        $p = trim($p);
-        if ($p === '') continue;
-        $e = htmlspecialchars($p, ENT_QUOTES, 'UTF-8');
-        $e = preg_replace_callback('~https?://[^\s<]+~u', static function (array $m): string {
-            $url = rtrim($m[0], '.,;:!?)');
-            $tail = substr($m[0], strlen($url));
-            return '<a href="' . $url . '" style="color:#b85e1e;">' . $url . '</a>' . $tail;
-        }, $e) ?? $e;
-        $out .= '<p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#3d3428;">' . nl2br($e, false) . '</p>';
-    }
-    return $out;
-}
-
-/** @param array<string,mixed> $c campagne (subject, preheader, title, body, button_label, button_url) */
-function mailing_render_html(array $c, string $unsubUrl): string {
-    $e = static fn(string $t): string => htmlspecialchars($t, ENT_QUOTES, 'UTF-8');
-    $title = trim((string)$c['title']) !== '' ? '<h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;color:#1a1510;">' . $e((string)$c['title']) . '</h1>' : '';
-    $btn = (trim((string)$c['button_label']) !== '' && trim((string)$c['button_url']) !== '')
-        ? '<p style="margin:22px 0 4px;"><a href="' . $e((string)$c['button_url']) . '" style="display:inline-block;background:#d4732a;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:10px;">' . $e((string)$c['button_label']) . '</a></p>'
-        : '';
-    $pre = trim((string)$c['preheader']) !== '' ? '<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">' . $e((string)$c['preheader']) . '</div>' : '';
-    return '<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' . $e((string)$c['subject']) . '</title></head>'
-        . '<body style="margin:0;padding:0;background:#f5f0e8;">' . $pre
-        . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0e8;"><tr><td align="center" style="padding:28px 12px;">'
-        . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Helvetica,Arial,sans-serif;">'
-        . '<tr><td style="padding:0 4px 14px;font-size:15px;font-weight:800;color:#3d3428;letter-spacing:.2px;"><span style="color:#d4732a;">&#9679;</span>&nbsp; Touraine-Ukraine</td></tr>'
-        . '<tr><td style="background:#ffffff;border-radius:16px;border:1px solid #e8ddd0;border-top:4px solid #d4732a;padding:28px 28px 22px;">'
-        . $title . mailing_body_html((string)$c['body']) . $btn
-        . '</td></tr>'
-        . '<tr><td style="padding:16px 8px 0;font-size:12px;line-height:1.55;color:#a89880;">'
-        . 'Vous recevez ce message de la part de l\'association Touraine-Ukraine.<br>'
-        . '<a href="' . $e($unsubUrl) . '" style="color:#a89880;">Se désinscrire des e-mails de l\'association</a>'
-        . '</td></tr></table></td></tr></table></body></html>';
-}
-
-/** @param array<string,mixed> $c */
-function mailing_render_text(array $c, string $unsubUrl): string {
-    $t = '';
-    if (trim((string)$c['title']) !== '') $t .= trim((string)$c['title']) . "\n\n";
-    $t .= trim((string)$c['body']) . "\n";
-    if (trim((string)$c['button_label']) !== '' && trim((string)$c['button_url']) !== '') {
-        $t .= "\n" . trim((string)$c['button_label']) . ' : ' . trim((string)$c['button_url']) . "\n";
-    }
-    return $t . "\n--\nVous recevez ce message de la part de l'association Touraine-Ukraine.\nSe désinscrire : " . $unsubUrl . "\n";
-}
-
 /* ---------- Envoi ---------- */
 
 /** Fige la liste des destinataires d'une campagne due et la passe « en cours ». Renvoie leur nombre. */
@@ -215,7 +201,7 @@ function mailing_start(PDO $pdo, int $campaignId): int {
     $stored = $st->fetchColumn();
     if ($stored === false) return 0;
 
-    $res = mailing_resolve($pdo, mailing_parse_audiences((string)$stored));
+    $res = mailing_resolve($pdo, mailing_parse_audiences((string)$stored), mailing_campaign_exclusions($pdo, $campaignId));
     $pdo->beginTransaction();
     try {
         $ins = $pdo->prepare("INSERT IGNORE INTO mailing_recipients (campaign_id, email, name, token) VALUES (?, ?, ?, ?)");
@@ -241,7 +227,7 @@ function mailing_send_batch(PDO $pdo, int $limit = MAILING_BATCH_SIZE): array {
     foreach ($due as $id) mailing_start($pdo, (int)$id);
 
     $sent = $failed = 0;
-    $st = $pdo->prepare("SELECT r.id, r.email, r.token, r.attempts, c.subject, c.preheader, c.title, c.body, c.button_label, c.button_url, c.site_url
+    $st = $pdo->prepare("SELECT r.id, r.email, r.token, r.attempts, c.subject, c.preheader, c.blocks, c.site_url
         FROM mailing_recipients r JOIN mailing_campaigns c ON c.id = r.campaign_id
         WHERE r.status = 'pending' AND c.status = 'sending'
         ORDER BY r.id LIMIT " . max(1, $limit));
@@ -260,7 +246,7 @@ function mailing_send_batch(PDO $pdo, int $limit = MAILING_BATCH_SIZE): array {
         $url = mailing_unsubscribe_url((string)$r['site_url'], (string)$r['token']);
         $err = suite_mail_send(
             (string)$r['email'], (string)$r['subject'],
-            mailing_render_text($r, $url), mailing_render_html($r, $url), [], 'mailing',
+            mailing_render_text($r, $url), mailing_render_html($r, $url, (string)$r['site_url']), [], 'mailing',
             ['List-Unsubscribe' => '<' . $url . '>', 'List-Unsubscribe-Post' => 'List-Unsubscribe=One-Click', 'Precedence' => 'bulk']
         );
         if ($err === null) {
