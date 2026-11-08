@@ -3,9 +3,13 @@
  * shared/mailer.php — Envoi d'e-mails (texte + HTML + pièces jointes), sans dépendance externe.
  *
  * Transport : fonction mail() de PHP, donc le serveur de messagerie local (Postfix) ; aucun SMTP à configurer.
- * Réglages facultatifs dans le .env de la suite (voir shared/db_credentials.php) :
- *   MAIL_FROM        adresse d'expédition (défaut : noreply@<domaine du site>)
- *   MAIL_FROM_NAME   nom affiché (défaut : « Touraine-Ukraine »)
+ *
+ * Expéditeurs (tous facultatifs, dans le .env de la suite). Un « canal » désigne une famille de messages :
+ *   planning (évènements), dons (reçus fiscaux), alertes (alertes de connexion), mailing (newsletters).
+ *   MAIL_FROM / MAIL_FROM_NAME / MAIL_REPLY_TO                       expéditeur par défaut
+ *                                                                    (défaut : noreply@<domaine du site>)
+ *   MAIL_FROM_<CANAL> / MAIL_FROM_NAME_<CANAL> / MAIL_REPLY_TO_<CANAL>   expéditeur d'un canal (repli : le défaut)
+ *   Exemple : MAIL_FROM_DONS=tresorerie@asso.fr  MAIL_REPLY_TO_PLANNING=planning@asso.fr
  *
  * suite_mail_send() ne lève jamais d'exception : elle renvoie null en cas de succès, sinon
  * le message d'erreur (déjà écrit dans error_log) — un souci d'e-mail ne doit jamais
@@ -14,35 +18,54 @@
 
 require_once __DIR__ . '/db_credentials.php';
 
+if (!function_exists('suite_mail_channels')) {
+    /** @return array<string,string> canal => libellé */
+    function suite_mail_channels(): array {
+        return ['planning' => 'Planning (évènements)', 'dons' => 'Dons (reçus fiscaux)', 'alertes' => 'Alertes de connexion', 'mailing' => 'Mailing (newsletters)'];
+    }
+}
+
 if (!function_exists('suite_mail_config')) {
-    /** @return array{from:string,from_name:string} */
-    function suite_mail_config(): array {
-        static $cfg = null;
-        if ($cfg !== null) return $cfg;
+    /**
+     * Expéditeur d'un canal (repli sur l'expéditeur par défaut).
+     * @return array{from:string,from_name:string,reply_to:string}
+     */
+    function suite_mail_config(string $channel = ''): array {
+        static $cache = [];
+        $channel = strtolower(trim($channel));
+        if (isset($cache[$channel])) return $cache[$channel];
+
         $file = suite_load_env_file(suite_env_path());
-        $get = static function (string $k, string $d = '') use ($file): string {
+        $get = static function (string $k) use ($file): string {
             $v = getenv($k);
             if ($v === false || $v === '') $v = $file[$k] ?? '';
-            return $v === '' ? $d : (string)$v;
+            return trim((string)$v);
         };
-        $from = $get('MAIL_FROM');
+        $pick = static function (string $key) use ($get, $channel): string {
+            $suffix = $channel !== '' && preg_match('/^[a-z]+$/', $channel) ? '_' . strtoupper($channel) : '';
+            $v = $suffix !== '' ? $get($key . $suffix) : '';
+            return $v !== '' ? $v : $get($key);
+        };
+
+        $from = $pick('MAIL_FROM');
         if ($from === '') {
             $host = strtolower((string)preg_replace('/:\d+$/', '', (string)($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? '')));
             $host = preg_replace('/^www\./', '', $host);
             $from = preg_match('/^[a-z0-9.-]+\.[a-z]{2,}$/', (string)$host) ? 'noreply@' . $host : '';
         }
-        $cfg = [
+        $name = $pick('MAIL_FROM_NAME');
+        return $cache[$channel] = [
             'from'      => $from,
-            'from_name' => $get('MAIL_FROM_NAME', 'Touraine-Ukraine'),
+            'from_name' => $name !== '' ? $name : 'Touraine-Ukraine',
+            'reply_to'  => $pick('MAIL_REPLY_TO'),
         ];
-        return $cfg;
     }
 }
 
 if (!function_exists('suite_mail_ready')) {
     /** true si une adresse d'expédition est déterminée (sans cela, aucun envoi n'est tenté). */
-    function suite_mail_ready(): bool {
-        return suite_mail_config()['from'] !== '';
+    function suite_mail_ready(string $channel = ''): bool {
+        return suite_mail_config($channel)['from'] !== '';
     }
 }
 
@@ -61,8 +84,8 @@ if (!function_exists('suite_mail_encode_header')) {
 
 if (!function_exists('suite_mail_send')) {
     /** @return ?string null = envoyé ; sinon message d'erreur */
-    function suite_mail_send(string $to, string $subject, string $body, ?string $html = null, array $attachments = []): ?string {
-        $cfg = suite_mail_config();
+    function suite_mail_send(string $to, string $subject, string $body, ?string $html = null, array $attachments = [], string $channel = '', array $extraHeaders = []): ?string {
+        $cfg = suite_mail_config($channel);
         $to = suite_mail_header_safe($to);
         if ($cfg['from'] === '') return "Adresse d'expédition indéterminée : définissez MAIL_FROM dans le .env de la suite.";
         if (!filter_var($to, FILTER_VALIDATE_EMAIL)) return "Adresse destinataire invalide.";
@@ -79,6 +102,14 @@ if (!function_exists('suite_mail_send')) {
             'MIME-Version: 1.0',
             'Auto-Submitted: auto-generated',
         ];
+        // En-têtes supplémentaires (ex. List-Unsubscribe d'une newsletter), nettoyés contre l'injection.
+        foreach ($extraHeaders as $name => $value) {
+            if (!preg_match('/^[A-Za-z][A-Za-z0-9-]*$/', (string)$name)) continue;
+            $headers[] = $name . ': ' . suite_mail_header_safe((string)$value);
+        }
+        if ($cfg['reply_to'] !== '' && filter_var($cfg['reply_to'], FILTER_VALIDATE_EMAIL)) {
+            $headers[] = 'Reply-To: ' . suite_mail_header_safe($cfg['reply_to']);
+        }
         $b64 = static fn(string $t): string => chunk_split(base64_encode($t), 76, "\r\n");
         if ($html === null) {
             $inner = ["Content-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . $b64($body)];

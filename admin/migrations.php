@@ -115,6 +115,7 @@ $moduleLabels = [
     'documents'   => 'Documents',
     'donations'   => 'Dons',
     'logistique'  => 'Logistique',
+    'mailing'     => 'Mailing',
     'planning'    => 'Planning',
     'prospection' => 'Prospection',
     'subventions' => 'Subventions',

@@ -326,6 +326,7 @@ if (!function_exists('suite_modules')) {
             'subventions'     => 'Subventions',
             'donations'       => 'Dons',
             'prospection'     => 'Prospection',
+            'mailing'         => 'Mailing',
             'documents'       => 'Documents',
             'reports'         => 'Rapports (CRA, bilans)',
             'site_backoffice' => 'Backoffice du site internet',
@@ -404,7 +405,7 @@ if (!function_exists('suite_module_from_path')) {
         $map = [
             'planning' => 'planning', 'caisse' => 'caisse', 'logistique' => 'logistique',
             'adhesions' => 'adhesions', 'subventions' => 'subventions', 'donations' => 'donations',
-            'prospection' => 'prospection', 'documents' => 'documents', 'reports' => 'reports',
+            'prospection' => 'prospection', 'mailing' => 'mailing', 'documents' => 'documents', 'reports' => 'reports',
         ];
         return $map[$first] ?? null;
     }
@@ -713,6 +714,7 @@ if (!$suiteIsCli) {
         '/planning/toggle_registration.php',
         '/planning/calendar.ics.php',
         '/logistique/stops/validate.php',
+        '/mailing/unsubscribe.php',
     ];
 
     $is_public_page = false;

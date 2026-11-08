@@ -62,7 +62,7 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
         if (!$isAdmin) return $module === 'planning';
         return module_access($module);
     };
-    $showGestion = $can('adhesions') || $can('subventions') || $can('donations') || $can('prospection') || $can('documents') || $can('reports');
+    $showGestion = $can('adhesions') || $can('subventions') || $can('donations') || $can('prospection') || $can('mailing') || $can('documents') || $can('reports');
 
     $roleLabel = match($role) {
         'super_admin' => 'Super admin',
@@ -345,6 +345,35 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
       <a href="<?= h2($base . '/prospection/import.php') ?>"
          class="tu-sb-item <?= _nav_active('prospection-import', $activeItem, $activeModule, 'prospection') ?>">
         Importer un CSV
+      </a>
+    </div>
+    <?php endif; ?>
+    <?php endif; ?>
+
+    <?php if ($can('mailing')): ?>
+    <!-- MAILING -->
+    <a href="<?= h2($base . '/mailing/index.php') ?>"
+       class="tu-sb-item <?= _mod_active('mailing', $activeModule) ?>"
+       id="snav-mailing">
+      <svg class="tu-sb-ico" viewBox="0 0 24 24">
+        <rect x="3" y="5" width="18" height="14" rx="2"/>
+        <path d="M3 7l9 6 9-6"/>
+      </svg>
+      Mailing
+    </a>
+    <?php if ($activeModule === 'mailing'): ?>
+    <div class="tu-sb-sub-nav">
+      <a href="<?= h2($base . '/mailing/compose.php') ?>"
+         class="tu-sb-item <?= _nav_active('mailing-compose', $activeItem, $activeModule, 'mailing') ?>">
+        Nouvelle newsletter
+      </a>
+      <a href="<?= h2($base . '/mailing/lists.php') ?>"
+         class="tu-sb-item <?= _nav_active('mailing-lists', $activeItem, $activeModule, 'mailing') ?>">
+        Listes de diffusion
+      </a>
+      <a href="<?= h2($base . '/mailing/index.php') ?>"
+         class="tu-sb-item <?= _nav_active('mailing-history', $activeItem, $activeModule, 'mailing') ?>">
+        Historique
       </a>
     </div>
     <?php endif; ?>

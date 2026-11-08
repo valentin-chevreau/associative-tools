@@ -176,6 +176,7 @@ if (!function_exists('audit_module_label')) {
             'subventions' => 'Subventions',
             'donations'   => 'Dons',
             'prospection' => 'Prospection',
+            'mailing'     => 'Mailing',
             'documents'   => 'Documents',
         ][$m] ?? ucfirst($m);
     }

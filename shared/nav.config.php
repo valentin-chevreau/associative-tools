@@ -274,6 +274,21 @@ if (!function_exists('nav_items')) {
       ];
     }
 
+    // Mailing (newsletters) — droit « mailing », Admin+ par défaut
+    $mailingChildren = [];
+    add_if_exists($mailingChildren, 'Nouvelle newsletter', $root . '/mailing/compose.php', $base . '/mailing/compose.php');
+    add_if_exists($mailingChildren, 'Listes de diffusion', $root . '/mailing/lists.php', $base . '/mailing/lists.php');
+    add_if_exists($mailingChildren, 'Historique', $root . '/mailing/index.php', $base . '/mailing/index.php');
+    if (!empty($mailingChildren)) {
+      $items[] = [
+        'label' => 'Mailing',
+        'icon'  => 'mail',
+        'module' => 'mailing', 'group' => 'gestion',
+        'min_role' => 'admin_plus',
+        'children' => $mailingChildren,
+      ];
+    }
+
     // Documents (attestations, PV, listes de présence…)
     $documentsChildren = [];
     add_if_exists($documentsChildren, 'Tous les documents', $root . '/documents/index.php', $base . '/documents/index.php');
