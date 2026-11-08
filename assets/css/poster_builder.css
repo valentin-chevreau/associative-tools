@@ -40,14 +40,3 @@
   .pb-tpls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pb-grid { grid-template-columns: 1fr; }
 }
-
-@media screen { #pbPrintRoot { display: none; } }
-
-/* Impression : seule la racine d'impression est visible */
-@media print {
-  body > *:not(#pbPrintRoot) { display: none !important; }
-  html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
-  #pbPrintRoot { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-}
-
-.pb-photo [hidden] { display: none !important; }
