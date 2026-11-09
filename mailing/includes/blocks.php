@@ -234,6 +234,14 @@ function mailing_logo_url(string $base): string {
     return rtrim($base, '/') . '/mailing/logo.php?v=' . (int)@filemtime($path);
 }
 
+/** Dimensions d'affichage du logo : hauteur 52 px, largeur proportionnelle (150 px au plus), pour ne jamais l'écraser. @return array{0:int,1:int} */
+function mailing_logo_size(): array {
+    $info = @getimagesize(dirname(__DIR__, 2) . '/uploads/branding/logo.png');
+    if (!$info || $info[0] < 1 || $info[1] < 1) return [52, 52];
+    $w = (int)round(52 * $info[0] / $info[1]);
+    return $w > 150 ? [150, (int)round(150 * $info[1] / $info[0])] : [$w, 52];
+}
+
 function mailing_render_html(array $c, string $unsubUrl, string $base): string {
     $e = static fn(string $t): string => htmlspecialchars($t, ENT_QUOTES, 'UTF-8');
     $body = '';
@@ -242,8 +250,9 @@ function mailing_render_html(array $c, string $unsubUrl, string $base): string {
     $font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif";
 
     $logo = mailing_logo_url($base);
+    [$lw, $lh] = mailing_logo_size();
     $mark = $logo !== ''
-        ? '<img src="' . $e($logo) . '" width="52" height="52" alt="Touraine-Ukraine" style="display:block;width:52px;height:52px;border:0;border-radius:13px;">'
+        ? '<img src="' . $e($logo) . '" width="' . $lw . '" height="' . $lh . '" alt="Touraine-Ukraine" style="display:block;width:' . $lw . 'px;height:' . $lh . 'px;border:0;">'
         : '<div style="width:52px;height:52px;border-radius:13px;background:#d4732a;color:#ffffff;font-size:18px;font-weight:800;line-height:52px;text-align:center;">TU</div>';
     $header = '<tr><td style="padding:0 4px 18px;"><table role="presentation" cellpadding="0" cellspacing="0"><tr>'
         . '<td style="padding-right:14px;vertical-align:middle;">' . $mark . '</td>'

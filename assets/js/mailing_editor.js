@@ -126,7 +126,7 @@
     });
     var mail = el('div', { class: 'mle-mail' }, [
       el('div', { class: 'mle-brand' }, [
-        D.logoUrl ? el('img', { src: D.logoUrl, alt: '', width: 52, height: 52 }) : el('div', { class: 'mle-mark', text: 'TU' }),
+        D.logoUrl ? el('img', { src: D.logoUrl, alt: '', height: 52 }) : el('div', { class: 'mle-mark', text: 'TU' }),
         el('div', {}, [el('b', { text: 'Touraine-Ukraine' }), el('span', { text: 'Association' })])
       ]), card,
       el('div', { class: 'mle-foot', html: '<b>Association Touraine-Ukraine</b><br>Vous recevez ce message car vous êtes en lien avec l\'association.<br><u>Se désinscrire des e-mails de l\'association</u>' })

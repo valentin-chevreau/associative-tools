@@ -3,7 +3,8 @@
 .mle-canvas { flex: 1 1 480px; min-width: 0; background: #f5f0e8; border: 1px solid var(--tu-ink-100); border-radius: 14px; padding: 24px 12px 32px; }
 .mle-mail { width: 100%; max-width: 560px; margin: 0 auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color: #3d3428; }
 .mle-brand { display: flex; align-items: center; gap: 14px; padding: 0 4px 16px; }
-.mle-brand img, .mle-brand .mle-mark { width: 52px; height: 52px; border-radius: 13px; display: block; flex: none; }
+.mle-brand img { height: 52px; width: auto; max-width: 150px; display: block; flex: none; }
+.mle-brand .mle-mark { width: 52px; height: 52px; border-radius: 13px; display: block; flex: none; }
 .mle-brand .mle-mark { background: #d4732a; color: #fff; font-size: 18px; font-weight: 800; line-height: 52px; text-align: center; }
 .mle-brand b { display: block; font-size: 19px; font-weight: 800; color: #1a1510; }
 .mle-brand span { display: block; font-size: 12.5px; color: #a89880; margin-top: 2px; }

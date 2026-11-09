@@ -42,7 +42,8 @@ $icons = [
     body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 16px;
            background: #f5f0e8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color: #1a1510; }
     .brand { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
-    .brand img, .brand .mark { width: 52px; height: 52px; border-radius: 13px; display: block; }
+    .brand img { height: 52px; width: auto; max-width: 150px; display: block; }
+    .brand .mark { width: 52px; height: 52px; border-radius: 13px; display: block; }
     .brand .mark { background: #d4732a; color: #fff; font-weight: 800; font-size: 18px; line-height: 52px; text-align: center; }
     .brand b { display: block; font-size: 19px; font-weight: 800; }
     .brand span { font-size: 12.5px; color: #a89880; }
