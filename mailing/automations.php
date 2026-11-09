@@ -86,7 +86,7 @@ mailing_page_start('Messages automatiques', 'mailing-auto', 'Automatiques',
         <span class="ml-muted"><?= $r['customized'] ? 'Texte personnalisé' : 'Texte par défaut' ?> ·
           <?= $r['enabled'] ? $stats['pending'] . ' en attente · ' : '' ?><?= $stats['sent_month'] ?> envoyé<?= $stats['sent_month'] > 1 ? 's' : '' ?> ce mois-ci</span>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <div style="display:flex;gap:8px;flex-wrap:nowrap;align-items:center;">
         <form method="post" style="display:contents;">
           <input type="hidden" name="csrf" value="<?= $h($csrf) ?>"><input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
           <?php if ($r['enabled']): ?>
@@ -96,9 +96,9 @@ mailing_page_start('Messages automatiques', 'mailing-auto', 'Automatiques',
           <?php endif; ?>
           <a href="automation.php?id=<?= (int)$r['id'] ?>" class="tu-btn tu-btn-s tu-btn-sm">Modifier</a>
           <button name="action" value="duplicate" class="tu-btn tu-btn-s tu-btn-sm">Dupliquer</button>
-          <button name="action" value="delete" class="tu-btn tu-btn-s tu-btn-sm" style="margin-left:auto;color:var(--tu-red-main);"
+          <button name="action" value="delete" class="tu-btn tu-btn-s tu-btn-sm" style="margin-left:auto;color:var(--tu-red-main);padding-left:10px;padding-right:10px;" title="Supprimer la règle" aria-label="Supprimer la règle"
                   data-confirm="Supprimer la règle « <?= $h($r['name']) ?> » ? Les messages déjà envoyés restent dans le journal."
-                  data-confirm-title="Supprimer la règle" data-confirm-label="Supprimer">Supprimer</button>
+                  data-confirm-title="Supprimer la règle" data-confirm-label="Supprimer"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
         </form>
       </div>
     </section>
