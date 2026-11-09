@@ -280,6 +280,9 @@ if (!function_exists('nav_items')) {
     add_if_exists($mailingChildren, 'Listes de diffusion', $root . '/mailing/lists.php', $base . '/mailing/lists.php');
     add_if_exists($mailingChildren, 'Historique', $root . '/mailing/index.php', $base . '/mailing/index.php');
     add_if_exists($mailingChildren, 'Automatiques', $root . '/mailing/automations.php', $base . '/mailing/automations.php');
+    if (function_exists('is_super_admin') && is_super_admin()) {
+      add_if_exists($mailingChildren, "File d'envoi", $root . '/mailing/queue.php', $base . '/mailing/queue.php');
+    }
     if (!empty($mailingChildren)) {
       $items[] = [
         'label' => 'Mailing',

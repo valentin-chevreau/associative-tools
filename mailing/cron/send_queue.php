@@ -34,6 +34,17 @@ if (!($pdo instanceof PDO)) {
 }
 if (!mailing_tables_ready($pdo)) exit(0); // migration pas encore exécutée
 
+// Témoin de passage affiché sur la page « File d'envoi » (ignoré si la migration 004 n'est pas passée).
+$heartbeat = static function (int $sent, int $failed, ?string $err = null) use ($pdo): void {
+    try {
+        $pdo->prepare("INSERT INTO mailing_cron_state (name, last_run_at, last_sent, last_failed, last_error) VALUES ('send_queue', NOW(), ?, ?, ?)
+            ON DUPLICATE KEY UPDATE last_run_at = NOW(), last_sent = VALUES(last_sent), last_failed = VALUES(last_failed), last_error = VALUES(last_error)")
+            ->execute([$sent, $failed, $err !== null ? mb_substr($err, 0, 255) : null]);
+    } catch (Throwable) {
+    }
+};
+$heartbeat(0, 0);
+
 // Un seul exécutant à la fois.
 if ((int)$pdo->query("SELECT GET_LOCK('mailing_send_queue', 0)")->fetchColumn() !== 1) exit(0);
 
@@ -48,6 +59,10 @@ try {
     if ($r['sent'] || $r['failed']) {
         echo date('c') . " mailing: {$r['sent']} envoyé(s), {$r['failed']} en échec\n";
     }
+    $heartbeat($a['sent'] + $r['sent'], $a['failed'] + $r['failed']);
+} catch (Throwable $e) {
+    $heartbeat(0, 0, $e->getMessage());
+    throw $e;
 } finally {
     $pdo->query("SELECT RELEASE_LOCK('mailing_send_queue')");
 }

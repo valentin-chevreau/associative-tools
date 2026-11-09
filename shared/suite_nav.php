@@ -379,6 +379,12 @@ function suite_nav_render(string $activeModule = '', string $activeItem = ''): v
          class="tu-sb-item <?= _nav_active('mailing-auto', $activeItem, $activeModule, 'mailing') ?>">
         Automatiques
       </a>
+      <?php if (function_exists('is_super_admin') && is_super_admin()): ?>
+      <a href="<?= h2($base . '/mailing/queue.php') ?>"
+         class="tu-sb-item <?= _nav_active('mailing-queue', $activeItem, $activeModule, 'mailing') ?>">
+        File d'envoi
+      </a>
+      <?php endif; ?>
     </div>
     <?php endif; ?>
     <?php endif; ?>
