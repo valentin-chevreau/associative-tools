@@ -227,20 +227,44 @@ function mailing_block_html(array $b, string $base): string {
  * Message complet en HTML.
  * @param array<string,mixed> $c campagne (subject, preheader, blocks)
  */
+/** Adresse publique du logo (vide si aucun logo n'a été téléversé). */
+function mailing_logo_url(string $base): string {
+    $path = dirname(__DIR__, 2) . '/uploads/branding/logo.png';
+    if (!is_file($path) || filesize($path) === 0) return '';
+    return rtrim($base, '/') . '/mailing/logo.php?v=' . (int)@filemtime($path);
+}
+
 function mailing_render_html(array $c, string $unsubUrl, string $base): string {
     $e = static fn(string $t): string => htmlspecialchars($t, ENT_QUOTES, 'UTF-8');
     $body = '';
     foreach (mailing_blocks_decode((string)$c['blocks']) as $b) $body .= mailing_block_html($b, $base);
     $pre = trim((string)$c['preheader']) !== '' ? '<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">' . $e((string)$c['preheader']) . '</div>' : '';
-    return '<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' . $e((string)$c['subject']) . '</title></head>'
+    $font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif";
+
+    $logo = mailing_logo_url($base);
+    $mark = $logo !== ''
+        ? '<img src="' . $e($logo) . '" width="52" height="52" alt="Touraine-Ukraine" style="display:block;width:52px;height:52px;border:0;border-radius:13px;">'
+        : '<div style="width:52px;height:52px;border-radius:13px;background:#d4732a;color:#ffffff;font-size:18px;font-weight:800;line-height:52px;text-align:center;">TU</div>';
+    $header = '<tr><td style="padding:0 4px 18px;"><table role="presentation" cellpadding="0" cellspacing="0"><tr>'
+        . '<td style="padding-right:14px;vertical-align:middle;">' . $mark . '</td>'
+        . '<td style="vertical-align:middle;"><div style="font-size:19px;font-weight:800;color:#1a1510;letter-spacing:.2px;">Touraine-Ukraine</div>'
+        . '<div style="font-size:12.5px;color:#a89880;margin-top:2px;">Association</div></td>'
+        . '</tr></table></td></tr>';
+
+    $host = (string)(parse_url($base, PHP_URL_HOST) ?: '');
+    $site = $host !== '' ? '<a href="' . $e((string)(parse_url($base, PHP_URL_SCHEME) ?: 'https') . '://' . $host) . '" style="color:#6b5c47;text-decoration:none;font-weight:600;">' . $e($host) . '</a>' : '';
+
+    return '<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+        . '<meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>' . $e((string)$c['subject']) . '</title></head>'
         . '<body style="margin:0;padding:0;background:#f5f0e8;">' . $pre
-        . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0e8;"><tr><td align="center" style="padding:28px 12px;">'
-        . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Helvetica,Arial,sans-serif;">'
-        . '<tr><td style="padding:0 4px 14px;font-size:15px;font-weight:800;color:#3d3428;letter-spacing:.2px;"><span style="color:#d4732a;">&#9679;</span>&nbsp; Touraine-Ukraine</td></tr>'
-        . '<tr><td style="background:#ffffff;border-radius:16px;border:1px solid #e8ddd0;border-top:4px solid #d4732a;padding:24px 24px 14px;">' . $body . '</td></tr>'
-        . '<tr><td style="padding:16px 8px 0;font-size:12px;line-height:1.55;color:#a89880;">'
-        . 'Vous recevez ce message de la part de l\'association Touraine-Ukraine.<br>'
-        . '<a href="' . $e($unsubUrl) . '" style="color:#a89880;">Se désinscrire des e-mails de l\'association</a>'
+        . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0e8;"><tr><td align="center" style="padding:32px 12px;">'
+        . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;font-family:' . $font . ';">'
+        . $header
+        . '<tr><td style="background:#ffffff;border-radius:18px;border:1px solid #e8ddd0;border-top:5px solid #d4732a;padding:28px 28px 16px;">' . $body . '</td></tr>'
+        . '<tr><td style="padding:20px 8px 0;font-size:12px;line-height:1.6;color:#a89880;text-align:center;">'
+        . '<div style="font-weight:700;color:#6b5c47;">Association Touraine-Ukraine' . ($site !== '' ? ' &middot; ' . $site : '') . '</div>'
+        . '<div style="margin-top:6px;">Vous recevez ce message car vous êtes en lien avec l\'association.<br>'
+        . '<a href="' . $e($unsubUrl) . '" style="color:#a89880;text-decoration:underline;">Se désinscrire des e-mails de l\'association</a></div>'
         . '</td></tr></table></td></tr></table></body></html>';
 }
 
