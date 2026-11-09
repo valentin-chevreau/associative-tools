@@ -125,6 +125,7 @@ $base = suite_base();
 $assetV = static fn(string $f): int => (int)@filemtime(dirname(__DIR__) . $f);
 $editorData = [
     'blocks'     => mailing_blocks_decode((string)$c['blocks']),
+    'logoUrl'    => mailing_logo_url($base),
     'events'     => $events,
     'directory'  => $directory,
     'excluded'   => $excluded,
@@ -213,7 +214,7 @@ mailing_page_start('Nouvelle newsletter', 'mailing-compose', 'Nouvelle newslette
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <button name="action" value="save" class="tu-btn tu-btn-s">Enregistrer le brouillon</button>
         <button name="action" value="test" class="tu-btn tu-btn-s">M'envoyer un test</button>
-        <button name="action" value="send" class="tu-btn tu-btn-p" id="mlSendBtn" data-confirm="Envoyer cette newsletter ?" data-confirm-title="Envoyer la newsletter" data-confirm-label="Envoyer" data-confirm-tone="default" <?= $mailOk ? '' : 'disabled' ?>>Envoyer / planifier</button>
+        <button name="action" value="send" class="tu-btn tu-btn-p" id="mlSendBtn" data-confirm="Envoyer cette newsletter ?" data-confirm-title="Envoyer la newsletter" data-confirm-label="Envoyer" data-confirm-tone="default" data-confirm-icon="mail" <?= $mailOk ? '' : 'disabled' ?>>Envoyer / planifier</button>
       </div>
     </div>
   </div>

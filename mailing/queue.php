@@ -12,7 +12,7 @@ $pdo = mailing_pdo();
 $h = 'mailing_h';
 $ready = mailing_tables_ready($pdo);
 $autoReady = $ready && mailing_auto_tables_ready($pdo);
-$defs = mailing_auto_definitions();
+$ruleNames = [];
 
 // ── Tâche planifiée ──
 $cron = null;
@@ -43,18 +43,18 @@ if ($ready) {
 // ── Messages automatiques ──
 $fType = (string)($_GET['type'] ?? '');
 $fStatus = (string)($_GET['status'] ?? '');
-if (!isset($defs[$fType])) $fType = '';
+if ($fType !== '' && !preg_match('/^r\d+$/', $fType)) $fType = '';
 if (!in_array($fStatus, ['sent', 'retry', 'failed', 'skipped'], true)) $fStatus = '';
 
 $due = [];
 $log = [];
 $counts = [];
 if ($autoReady) {
-    foreach ($defs as $type => $d) {
-        $cfg = mailing_auto_get($pdo, $type);
-        if (!$cfg['enabled']) continue;
-        foreach (mailing_auto_due($pdo, $type, $cfg['site_url'] !== '' ? $cfg['site_url'] : 'x', 200) as $it) {
-            $due[] = ['type' => $type, 'email' => $it['email'], 'ref' => $it['ref']];
+    foreach (mailing_rules_list($pdo) as $rule) {
+        $ruleNames['r' . $rule['id']] = $rule['name'];
+        if (!$rule['enabled']) continue;
+        foreach (mailing_rule_due($pdo, $rule, $rule['site_url'] !== '' ? $rule['site_url'] : 'x', 200) as $it) {
+            $due[] = ['type' => 'r' . $rule['id'], 'email' => $it['email'], 'ref' => $it['ref']];
         }
     }
     foreach ($pdo->query("SELECT status, COUNT(*) n FROM mailing_auto_log WHERE created_at >= NOW() - INTERVAL 7 DAY GROUP BY status")->fetchAll(PDO::FETCH_ASSOC) as $r) {
@@ -132,7 +132,7 @@ if ($cron && !empty($cron['last_error'])) { $cText .= ' · Erreur : ' . $cron['l
   <?php else: ?>
   <table class="tu-tbl"><thead><tr><th>Message</th><th>Destinataire</th><th>Référence</th></tr></thead><tbody>
     <?php foreach ($due as $d): ?>
-      <tr><td><?= $h($defs[$d['type']]['label']) ?></td><td><?= $h($d['email']) ?></td><td class="ml-muted"><?= $h($d['ref']) ?></td></tr>
+      <tr><td><?= $h($ruleNames[$d['type']] ?? 'Règle supprimée') ?></td><td><?= $h($d['email']) ?></td><td class="ml-muted"><?= $h($d['ref']) ?></td></tr>
     <?php endforeach; ?>
   </tbody></table>
   <?php endif; ?>
@@ -146,7 +146,7 @@ if ($cron && !empty($cron['last_error'])) { $cText .= ' · Erreur : ' . $cron['l
     <form method="get" style="display:flex;gap:8px;flex-wrap:wrap;">
       <select name="type" class="tu-input" onchange="this.form.submit()">
         <option value="">Tous les messages</option>
-        <?php foreach ($defs as $k => $d): ?><option value="<?= $h($k) ?>" <?= $fType === $k ? 'selected' : '' ?>><?= $h($d['label']) ?></option><?php endforeach; ?>
+        <?php foreach ($ruleNames as $k => $label): ?><option value="<?= $h($k) ?>" <?= $fType === $k ? 'selected' : '' ?>><?= $h($label) ?></option><?php endforeach; ?>
       </select>
       <select name="status" class="tu-input" onchange="this.form.submit()">
         <option value="">Tous les statuts</option>
@@ -161,7 +161,7 @@ if ($cron && !empty($cron['last_error'])) { $cText .= ' · Erreur : ' . $cron['l
     <?php foreach ($log as $r): [$lab, $tone] = $statusLabel[$r['status']] ?? [$r['status'], 'sand']; ?>
       <tr>
         <td style="white-space:nowrap;"><?= $h(date('d/m/Y H:i', strtotime((string)($r['sent_at'] ?: $r['created_at'])))) ?></td>
-        <td><?= $h($defs[$r['type']]['label'] ?? $r['type']) ?></td>
+        <td><?= $h($ruleNames[$r['type']] ?? ($r['type'] === 'reminder' || $r['type'] === 'welcome' ? 'Ancien message' : 'Règle supprimée')) ?></td>
         <td><?= $h($r['email']) ?></td>
         <td><span class="ml-pill ml-pill-<?= $h($tone) ?>"><?= $h($lab) ?></span></td>
         <td><?= (int)$r['attempts'] ?></td>

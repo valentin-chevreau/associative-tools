@@ -21,6 +21,7 @@ if (PHP_SAPI !== 'cli') {
 
 require_once dirname(__DIR__, 2) . '/shared/bootstrap.php';
 require_once dirname(__DIR__) . '/includes/automations.php';
+date_default_timezone_set(MAILING_TZ); // les heures d'envoi des règles sont celles de Paris, quel que soit le réglage du serveur
 
 $batch = MAILING_BATCH_SIZE;
 foreach (array_slice($argv, 1) as $arg) {
