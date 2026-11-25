@@ -37,16 +37,19 @@ if (!filter_var($to, FILTER_VALIDATE_EMAIL)) $flash(false, "Ce donateur n'a pas 
 $org     = (string)$d['org_name'];
 $number  = (string)$d['number'];
 $subject = "Votre reçu fiscal {$number} — {$org}";
-$first   = trim(explode(' ', (string)$d['donor_name'])[0] ?? '');
+$first   = trim(explode(' ', (string)($d['is_company'] ? $d['donor_contact'] : $d['donor_name']))[0] ?? '');
 
+$inKind  = !empty($d['is_in_kind']);
+$tax     = !empty($d['is_company']) ? 'votre déclaration fiscale' : 'votre déclaration de revenus';
+$thanks  = $inKind ? "Merci pour votre don en nature à {$org} (valeur déclarée : {$d['amount_fr']})" : "Merci pour votre don de {$d['amount_fr']} à {$org}";
 $text = "Bonjour" . ($first !== '' ? " {$first}" : '') . ",\n\n"
-      . "Merci pour votre don de {$d['amount_fr']} à {$org}. Vous trouverez en pièce jointe votre reçu fiscal n° {$number} (PDF), "
-      . "à conserver pour votre déclaration de revenus.\n\n"
+      . "{$thanks}. Vous trouverez en pièce jointe votre reçu fiscal n° {$number} (PDF), "
+      . "à conserver pour {$tax}.\n\n"
       . "Très cordialement,\n{$org}\n";
 $html = suite_mail_html(
     'Votre reçu fiscal',
-    "Merci pour votre don à {$org}. Votre reçu fiscal est joint à ce message au format PDF : conservez-le pour votre déclaration de revenus.",
-    [['Référence', $number], ['Montant', (string)$d['amount_fr']], ['Date du don', (string)$d['donation_date']]],
+    "Merci pour votre don à {$org}. Votre reçu fiscal est joint à ce message au format PDF : conservez-le pour {$tax}.",
+    [['Référence', $number], [$inKind ? 'Valeur du don' : 'Montant', (string)$d['amount_fr']], [!empty($d['grouped']) ? 'Période' : 'Date du don', (string)$d['donation_date']]],
     null,
     $org,
     'Reçu fiscal'

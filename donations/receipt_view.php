@@ -126,29 +126,48 @@ a.btn.btn-primary{color:#fff}
         <?php endif; ?>
         <?php if ($d['org_rna'] !== ''): ?><div class="row"><div class="k">RNA</div><div class="v"><?= h($d['org_rna']) ?></div></div><?php endif; ?>
         <?php if ($d['org_siret'] !== ''): ?><div class="row"><div class="k">SIRET</div><div class="v mono"><?= h($d['org_siret']) ?></div></div><?php endif; ?>
+        <?php if ($d['org_object'] !== ''): ?><div class="row"><div class="k">Objet</div><div class="v"><?= h($d['org_object']) ?></div></div><?php endif; ?>
+        <?php if ($d['org_status'] !== ''): ?><div class="row"><div class="k">Qualité</div><div class="v"><?= h($d['org_status']) ?></div></div><?php endif; ?>
       </div>
 
       <div class="block">
         <h3>Donateur</h3>
-        <div class="row"><div class="k">Donateur</div><div class="v"><?= h($d['donor_name'] ?: '—') ?></div></div>
+        <?php if ($d['is_company']): ?>
+          <div class="row"><div class="k">Dénomination</div><div class="v"><?= h($d['donor_company'] ?: '—') ?></div></div>
+          <div class="row"><div class="k">SIREN / SIRET</div><div class="v mono"><?= h($d['donor_siren'] ?: '—') ?></div></div>
+          <?php if ($d['donor_contact'] !== ''): ?><div class="row"><div class="k">Contact</div><div class="v"><?= h($d['donor_contact']) ?></div></div><?php endif; ?>
+        <?php else: ?>
+          <div class="row"><div class="k">Donateur</div><div class="v"><?= h($d['donor_name'] ?: '—') ?></div></div>
+        <?php endif; ?>
         <?php if ($d['donor_email'] !== ''): ?><div class="row"><div class="k">Email</div><div class="v"><?= h($d['donor_email']) ?></div></div><?php endif; ?>
-        <?php if ($d['donor_lines']): ?><div class="row"><div class="k">Adresse</div><div class="v"><?= implode('<br>', array_map('h', $d['donor_lines'])) ?></div></div><?php endif; ?>
+        <?php if ($d['donor_lines']): ?><div class="row"><div class="k"><?= $d['is_company'] ? 'Siège' : 'Adresse' ?></div><div class="v"><?= implode('<br>', array_map('h', $d['donor_lines'])) ?></div></div><?php endif; ?>
       </div>
     </div>
 
     <div class="block" style="margin-top:12px">
       <h3>Don</h3>
-      <div class="row"><div class="k">Date du don</div><div class="v"><?= h($d['donation_date']) ?></div></div>
-      <div class="row"><div class="k">Nature</div><div class="v">Don en numéraire</div></div>
-      <div class="row"><div class="k">Montant</div><div class="v big"><?= h($d['amount_fr']) ?></div></div>
+      <div class="row"><div class="k"><?= $d['grouped'] ? 'Période' : 'Date du don' ?></div><div class="v"><?= h($d['donation_date']) ?></div></div>
+      <div class="row"><div class="k">Nature</div><div class="v"><?= h($d['kind_label']) ?></div></div>
+      <?php if ($d['is_in_kind']): ?>
+        <div class="row"><div class="k">Description</div><div class="v">
+          <?php foreach ($d['items'] as $it): ?>
+            <div><?= $d['grouped'] ? h($it['date']) . ' : ' : '' ?><?= nl2br(h($it['description'])) ?><?= $d['grouped'] ? ' (' . h($it['amount_fr']) . ')' : '' ?></div>
+          <?php endforeach; ?>
+        </div></div>
+        <?php if ($d['valuation_bases']): ?><div class="row"><div class="k">Base de valeur</div><div class="v"><?= implode('<br>', array_map('h', $d['valuation_bases'])) ?></div></div><?php endif; ?>
+        <div class="row"><div class="k">Valorisation</div><div class="v">communiquée par le donateur<?= $d['valuation_source'] !== '' ? ' : ' . h($d['valuation_source']) : '' ?></div></div>
+      <?php else: ?>
+        <?php if ($d['grouped']): ?>
+          <div class="row"><div class="k">Versements</div><div class="v"><?php foreach ($d['items'] as $it): ?><div><?= h($it['date']) ?> : <?= h($it['amount_fr']) ?></div><?php endforeach; ?></div></div>
+        <?php endif; ?>
+        <?php if ($d['payment_label'] !== ''): ?><div class="row"><div class="k">Mode de versement</div><div class="v"><?= h($d['payment_label']) ?></div></div><?php endif; ?>
+      <?php endif; ?>
+      <div class="row"><div class="k"><?= $d['is_in_kind'] ? 'Valeur du don' : 'Montant' ?></div><div class="v big"><?= h($d['amount_fr']) ?></div></div>
     </div>
 
     <div class="legal">
       <strong>Mentions légales :</strong><br>
-      Le présent reçu atteste que l'organisme ci‑dessus a reçu un don en numéraire du donateur mentionné.
-      Ce don ouvre droit à une réduction d'impôt au titre de l'article 200 du Code général des impôts
-      (et/ou article 238 bis pour les entreprises, selon la situation du donateur), sous réserve de la réglementation en vigueur.<br><br>
-      L'organisme certifie sur l'honneur remplir les conditions prévues par la loi pour bénéficier des dispositions fiscales relatives aux dons.<br><br>
+      <?php foreach ($d['legal'] as $para): ?><?= h($para) ?><br><br><?php endforeach; ?>
       Fait à <?= h($d['done_at'] !== '' ? $d['done_at'] : '________________') ?>, le <?= h($d['receipt_date']) ?><br>
       Pour l'association,
       <?php if ($d['signatory']):

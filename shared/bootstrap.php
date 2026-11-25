@@ -160,8 +160,29 @@ if (!$suiteIsCli && session_status() === PHP_SESSION_NONE) {
     $suiteHost = strtolower((string) preg_replace('/:\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? '')));
     $suiteHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
         || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    /* Durée de session : délai d'INACTIVITÉ toléré avant déconnexion (glissant : chaque page
+     * visitée repousse l'échéance). Défaut 8 h ; réglable par SUITE_SESSION_IDLE_MINUTES dans le .env
+     * (de 30 minutes à 30 jours). Sans réglage, PHP coupait à 24 min (session.gc_maxlifetime=1440).
+     *
+     * Sur Debian/Ubuntu, la tâche « sessionclean » purge les fichiers de session selon la valeur de
+     * session.gc_maxlifetime du php.ini de PHP-FPM, pas selon ce réglage : il faut y mettre la même
+     * durée (voir .env.example). Le dossier des sessions n'est PAS changé par défaut, car le site
+     * (touraine-ukraine.fr) relit ce même cookie de session. SUITE_SESSION_PATH permet de le
+     * déplacer, à condition de faire de même côté site. */
+    require_once __DIR__ . '/db_credentials.php';
+    $suiteEnvVals = suite_load_env_file(suite_env_path());
+    $suiteIdleMin = (int)(getenv('SUITE_SESSION_IDLE_MINUTES') ?: ($suiteEnvVals['SUITE_SESSION_IDLE_MINUTES'] ?? 480));
+    $suiteSessTtl = max(30, min($suiteIdleMin, 60 * 24 * 30)) * 60;
+    ini_set('session.gc_maxlifetime', (string)$suiteSessTtl);
+    $suiteSessDir = (string)(getenv('SUITE_SESSION_PATH') ?: ($suiteEnvVals['SUITE_SESSION_PATH'] ?? ''));
+    if ($suiteSessDir !== '' && is_dir($suiteSessDir) && is_writable($suiteSessDir)) {
+        session_save_path($suiteSessDir);
+        ini_set('session.gc_probability', '1');   // dossier dédié : le nettoyage de Debian ne le couvre pas
+        ini_set('session.gc_divisor', '100');
+    }
+
     session_set_cookie_params([
-        'lifetime' => 0,
+        'lifetime' => $suiteSessTtl,
         'path'     => '/',
         'domain'   => str_ends_with('.' . $suiteHost, SUITE_COOKIE_DOMAIN) ? SUITE_COOKIE_DOMAIN : '',
         'secure'   => $suiteHttps,

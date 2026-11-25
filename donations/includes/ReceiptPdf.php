@@ -7,7 +7,7 @@ require_once dirname(__DIR__, 2) . '/shared/lib/TuPdf.php';
 
 final class ReceiptPdf extends TuPdf
 {
-    private const LABEL_W = 30.0;
+    private const LABEL_W = 37.0;
 
     /** @var array<string,mixed> */
     private array $d = [];
@@ -16,7 +16,7 @@ final class ReceiptPdf extends TuPdf
     {
         parent::__construct('P', 'mm', 'A4');
         $this->SetMargins(20, 20, 20);
-        $this->SetAutoPageBreak(false);
+        $this->SetAutoPageBreak(true, 25);
     }
 
     /** @param array<string,mixed> $d données de receipt_build() */
@@ -101,36 +101,61 @@ final class ReceiptPdf extends TuPdf
         $this->row(20, $colW, 'Adresse :', $d['org_lines']);
         $this->row(20, $colW, 'RNA :', (string)$d['org_rna']);
         $this->row(20, $colW, 'SIRET :', (string)$d['org_siret']);
+        $this->row(20, $colW, 'Objet :', (string)$d['org_object'], 9);
+        $this->row(20, $colW, 'Qualité :', (string)$d['org_status'], 9);
         $yOrg = $this->GetY();
 
         $this->SetY($top);
         $this->section('DONATEUR', $x2, $colW);
-        $this->row($x2, $colW, 'Donateur :', $d['donor_name'] !== '' ? (string)$d['donor_name'] : '—');
+        if ($d['is_company']) {
+            $this->row($x2, $colW, 'Dénomination :', $d['donor_company'] !== '' ? (string)$d['donor_company'] : '—', 9.5, true);
+            $this->row($x2, $colW, 'SIREN / SIRET :', (string)$d['donor_siren']);
+            $this->row($x2, $colW, 'Contact :', (string)$d['donor_contact'], 9);
+        } else {
+            $this->row($x2, $colW, 'Donateur :', $d['donor_name'] !== '' ? (string)$d['donor_name'] : '—');
+        }
         $this->row($x2, $colW, 'Email :', (string)$d['donor_email'], 9);
-        $this->row($x2, $colW, 'Adresse :', $d['donor_lines']);
+        $this->row($x2, $colW, $d['is_company'] ? 'Siège :' : 'Adresse :', $d['donor_lines']);
         $yDon = $this->GetY();
 
         $this->SetY(max($yOrg, $yDon) + 4);
 
         // Don
         $this->section('DON', 20, 170);
-        $this->row(20, 170, 'Date du don :', (string)$d['donation_date']);
-        $this->row(20, 170, 'Nature :', 'Don en numéraire');
-        $this->row(20, 170, 'Montant :', (string)$d['amount_fr'], 12, true);
+        $this->row(20, 170, $d['grouped'] ? 'Période :' : 'Date du don :', (string)$d['donation_date']);
+        $this->row(20, 170, 'Nature :', (string)$d['kind_label']);
+        if ($d['is_in_kind']) {
+            if ($d['grouped']) {
+                $lines = [];
+                foreach ($d['items'] as $it) {
+                    $lines[] = $it['date'] . ' : ' . str_replace("\n", ' ; ', (string)$it['description']) . ' (' . $it['amount_fr'] . ')';
+                }
+                $this->row(20, 170, 'Description :', $lines, 9);
+            } else {
+                $this->row(20, 170, 'Description :', (string)($d['items'][0]['description'] ?? ''), 9);
+            }
+            $this->row(20, 170, 'Base de valeur :', $d['valuation_bases'], 9);
+            $this->row(20, 170, 'Valorisation :', $d['valuation_source'] !== '' ? 'communiquée par le donateur : ' . $d['valuation_source'] : 'communiquée par le donateur', 9);
+        } else {
+            if ($d['grouped']) {
+                $lines = [];
+                foreach ($d['items'] as $it) $lines[] = $it['date'] . ' : ' . $it['amount_fr'];
+                $this->row(20, 170, 'Versements :', $lines, 9);
+            }
+            $this->row(20, 170, 'Mode de versement :', (string)$d['payment_label'], 9.5);
+        }
+        $this->row(20, 170, $d['is_in_kind'] ? 'Valeur du don :' : 'Montant :', (string)$d['amount_fr'], 12, true);
         $this->SetY($this->GetY() + 5);
 
         // Mentions légales
         $this->section('MENTIONS LÉGALES', 20, 170);
         $this->SetFont('LS', '', 9);
         $this->SetTextColor(40, 40, 40);
-        $this->SetX(20);
-        $this->MultiCell(170, 4.7,
-            "Le présent reçu atteste que l'organisme ci-dessus a reçu un don en numéraire du donateur mentionné. "
-            . "Ce don ouvre droit à une réduction d'impôt au titre de l'article 200 du Code général des impôts "
-            . "(et/ou article 238 bis pour les entreprises, selon la situation du donateur), sous réserve de la réglementation en vigueur.", 0, 'J');
-        $this->SetY($this->GetY() + 2.5);
-        $this->SetX(20);
-        $this->MultiCell(170, 4.7, "L'organisme certifie sur l'honneur remplir les conditions prévues par la loi pour bénéficier des dispositions fiscales relatives aux dons.", 0, 'J');
+        foreach ($d['legal'] as $i => $para) {
+            if ($i > 0) $this->SetY($this->GetY() + 2.5);
+            $this->SetX(20);
+            $this->MultiCell(170, 4.7, (string)$para, 0, 'J');
+        }
         $this->SetY($this->GetY() + 8);
 
         // Date + signature

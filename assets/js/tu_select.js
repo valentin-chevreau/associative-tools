@@ -199,6 +199,12 @@
     select.addEventListener('change', sync);
 
     select._syncCustomSelect = sync;
+    // À rappeler après avoir ajouté/retiré des <option> par script : reconstruit la liste affichée.
+    select._rebuildCustomSelect = function () {
+      build();
+      sync();
+      if (search) search.style.display = select.options.length >= SEARCH_FROM ? '' : 'none';
+    };
     build();
     sync();
   }

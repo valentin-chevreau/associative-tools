@@ -14,6 +14,7 @@ require_admin(); // l'accès au module est contrôlé par shared/bootstrap.php (
 
 require_once __DIR__ . '/includes/env.php';
 require_once __DIR__ . '/includes/helloasso_client.php';
+require_once __DIR__ . '/includes/receipt.php';
 
 $config = require __DIR__ . '/config.php';
 
@@ -96,6 +97,25 @@ function normalize_french_street(string $s): string {
  * Parse une date FR "dd/mm/yyyy" (ou ISO "yyyy-mm-dd") en DateTimeImmutable.
  * Retourne null si la date est vide ou invalide.
  */
+/**
+ * Enregistre le justificatif d'un don en nature (PDF, JPEG ou PNG, 5 Mo max) dans uploads/donations/
+ * (dossier hors dépôt, servi uniquement par donations/proof.php). Renvoie le chemin relatif, ou null si aucun fichier.
+ * @throws RuntimeException
+ */
+function store_donation_proof(?array $f): ?string {
+    if (!$f || ($f['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) return null;
+    if (($f['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK || !is_uploaded_file((string)$f['tmp_name'])) throw new RuntimeException("Le téléversement du justificatif a échoué.");
+    if ((int)$f['size'] > 5 * 1024 * 1024) throw new RuntimeException("Justificatif trop lourd (5 Mo maximum).");
+    $mime = (string)(new finfo(FILEINFO_MIME_TYPE))->file((string)$f['tmp_name']);
+    $ext = ['application/pdf' => 'pdf', 'image/jpeg' => 'jpg', 'image/png' => 'png'][$mime] ?? null;
+    if ($ext === null) throw new RuntimeException("Justificatif : formats acceptés PDF, JPEG ou PNG.");
+    $dir = dirname(__DIR__) . '/uploads/donations';
+    if (!is_dir($dir) && !@mkdir($dir, 0755, true)) throw new RuntimeException("Impossible de créer le dossier uploads/donations (droits d'écriture ?).");
+    $name = bin2hex(random_bytes(16)) . '.' . $ext;
+    if (!@move_uploaded_file((string)$f['tmp_name'], $dir . '/' . $name)) throw new RuntimeException("Impossible d'enregistrer le justificatif.");
+    return 'donations/' . $name;
+}
+
 function parse_fr_date(string $s): ?DateTimeImmutable {
     $s = trim($s);
     if ($s === "") return null;
@@ -257,6 +277,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_manual_add'])) {
         $city   = trim((string)($_POST['donor_city'] ?? ''));
         $country= trim((string)($_POST['donor_country'] ?? 'France'));
 
+        // Type de donateur / de don (entreprise, don en nature, mécénat de compétences)
+        $donorType  = (($_POST['donor_type'] ?? '') === 'company') ? 'company' : 'individual';
+        $kind       = (string)($_POST['donation_kind'] ?? 'cash');
+        if (!isset(donation_kinds()[$kind])) $kind = 'cash';
+        $company    = $donorType === 'company' ? trim((string)($_POST['donor_company_name'] ?? '')) : '';
+        $siren      = $donorType === 'company' ? receipt_digits((string)($_POST['donor_siren'] ?? '')) : '';
+        $inKindDesc = $kind !== 'cash' ? trim(str_replace("\r", '', (string)($_POST['in_kind_description'] ?? ''))) : '';
+        $valBasis   = $kind !== 'cash' ? (string)($_POST['valuation_basis'] ?? '') : '';
+        $valSource  = $kind !== 'cash' ? trim((string)($_POST['valuation_source'] ?? '')) : '';
+        $noCounter  = ($kind !== 'cash' && !empty($_POST['no_counterpart'])) ? 1 : 0;
+        if ($kind !== 'cash') $payment = '';
+
         // Normalisation (affichage + PDF plus propres)
         $first = u_title($first);
         $last  = u_upper($last);
@@ -267,6 +299,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_manual_add'])) {
         $receiptEligible = !empty($_POST['receipt_eligible']) ? 1 : 0;
 
         if ($amount <= 0) $info['errors'][] = "Montant invalide.";
+
+        if ($donorType === 'company') {
+            if ($company === '') $info['errors'][] = "Raison sociale de l'entreprise obligatoire.";
+            if ($receiptEligible && !receipt_siren_valid($siren)) $info['errors'][] = "SIREN ou SIRET invalide (9 ou 14 chiffres) : il est obligatoire sur le reçu d'une entreprise.";
+        }
+        if ($kind !== 'cash') {
+            $bases = donation_valuation_bases();
+            if ($inKindDesc === '') $info['errors'][] = "Décrivez précisément les biens ou services donnés (nature et quantités).";
+            if (!isset($bases[$valBasis]) || !in_array($donorType, $bases[$valBasis]['for'], true) || !in_array($kind, $bases[$valBasis]['kinds'], true)) {
+                $info['errors'][] = "Choisissez la base de valorisation qui correspond à ce type de don et de donateur.";
+            }
+            if ($valSource === '') $info['errors'][] = "Indiquez qui a communiqué la valorisation et comment (attestation, facture…) : sans elle, le reçu ne peut pas être émis.";
+            if (!$noCounter) $info['errors'][] = "Confirmez que le donateur ne reçoit aucune contrepartie directe : sinon il s'agit de parrainage, qui n'ouvre pas droit au reçu fiscal.";
+            if ($donorType === 'company' && $company === '' && $last === '') $info['errors'][] = "Identité du donateur manquante.";
+            if ($donorType === 'individual' && $last === '' && $first === '') $info['errors'][] = "Nom du donateur obligatoire pour un don en nature.";
+        }
 
         $dt = parse_fr_date($date);
         if (!$dt) $info['errors'][] = "Date invalide (attendu : JJ/MM/AAAA ou AAAA-MM-JJ).";
@@ -279,6 +327,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_manual_add'])) {
 
         if ($demail !== '' && !filter_var($demail, FILTER_VALIDATE_EMAIL)) {
             $info['errors'][] = "Email invalide.";
+        }
+
+        $proofPath = null;
+        if (empty($info['errors']) && $kind !== 'cash') {
+            try { $proofPath = store_donation_proof($_FILES['proof'] ?? null); }
+            catch (Throwable $e) { $info['errors'][] = $e->getMessage(); }
         }
 
         if (empty($info['errors'])) {
@@ -298,6 +352,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_manual_add'])) {
                         donor_first_name, donor_last_name, donor_email,
                         donor_address, donor_postal_code, donor_city, donor_country,
                         payment_method, status,
+                        donor_type, donor_company_name, donor_siren, donation_kind,
+                        in_kind_description, valuation_basis, valuation_source, no_counterpart, proof_path,
                         receipt_eligible, raw_payload
                     ) VALUES (
                         :source, :source_ref,
@@ -305,6 +361,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_manual_add'])) {
                         :first, :last, :email,
                         :addr, :postal, :city, :country,
                         :payment_method, :status,
+                        :donor_type, :company, :siren, :kind,
+                        :in_kind_description, :valuation_basis, :valuation_source, :no_counterpart, :proof_path,
                         :receipt_eligible, :raw_payload
                     )
                 ");
@@ -323,13 +381,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_manual_add'])) {
                     'country' => ($country !== '' ? $country : null),
                     'payment_method' => ($payment !== '' ? $payment : null),
                     'status' => 'paid',
+                    'donor_type' => $donorType,
+                    'company' => ($company !== '' ? $company : null),
+                    'siren' => ($siren !== '' ? $siren : null),
+                    'kind' => $kind,
+                    'in_kind_description' => ($inKindDesc !== '' ? $inKindDesc : null),
+                    'valuation_basis' => ($valBasis !== '' ? $valBasis : null),
+                    'valuation_source' => ($valSource !== '' ? $valSource : null),
+                    'no_counterpart' => $noCounter,
+                    'proof_path' => $proofPath,
                     'receipt_eligible' => $receiptEligible,
                     'raw_payload' => json_encode($payload, JSON_UNESCAPED_UNICODE),
                 ]);
                 audit_log('donations', 'create', 'donation', (int)$pdo->lastInsertId(),
                     'Don manuel du ' . $dt->format('d/m/Y') . ' — ' . number_format((float)$amount, 2, ',', ' ') . ' €',
-                    ['montant' => round((float)$amount, 2), 'moyen' => $payment !== '' ? $payment : null, 'eligible_recu' => $receiptEligible]);
-                $msg = "Don manuel ajouté.";
+                    ['montant' => round((float)$amount, 2), 'moyen' => $payment !== '' ? $payment : null, 'eligible_recu' => $receiptEligible, 'type_donateur' => $donorType, 'nature' => $kind, 'justificatif' => $proofPath !== null]);
+                $msg = $kind === 'cash' ? "Don manuel ajouté." : "Don en nature ajouté : il sera valorisé à " . number_format((float)$amount, 2, ',', ' ') . " € sur le reçu.";
             } catch (Throwable $e) {
                 $info['errors'][] = "Insertion impossible : " . $e->getMessage();
             }
@@ -346,12 +413,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_manual_delete'])) 
         if ($id <= 0) {
             $info['errors'][] = "ID invalide.";
         } else {
-            $stmt = $pdo->prepare("SELECT id, source, amount, donation_date, receipt_number FROM donations WHERE id = :id");
+            $stmt = $pdo->prepare("SELECT id, source, amount, donation_date, receipt_number, receipt_group_id FROM donations WHERE id = :id");
             $stmt->execute(['id' => $id]);
             $don = $stmt->fetch(PDO::FETCH_ASSOC);
+            $inGroup = false;
+            if ($don) {
+                $gq = $pdo->prepare("SELECT COUNT(*) FROM donations WHERE receipt_group_id = :i");
+                $gq->execute(['i' => $id]);
+                $inGroup = ((int)($don['receipt_group_id'] ?? 0) > 0) || ((int)$gq->fetchColumn() > 0);
+            }
 
             if (!$don) {
                 $info['errors'][] = "Don introuvable.";
+            } elseif ($inGroup) {
+                $info['errors'][] = "Suppression refusée : ce don fait partie d'un reçu groupé déjà émis.";
             } elseif (($don['source'] ?? '') !== 'manual') {
                 $info['errors'][] = "Suppression refusée : seuls les dons manuels sont supprimables.";
             } else {
@@ -383,6 +458,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_generate_receipt']
                 $info['errors'][] = "Don introuvable.";
             } elseif ((string)($don['source'] ?? '') !== 'manual') {
                 $info['errors'][] = "Reçu fiscal désactivé : ce don provient de HelloAsso.";
+            } elseif (($issue = receipt_blocking_issue($don)) !== null) {
+                $info['errors'][] = "Reçu impossible : " . $issue;
             } else {
                 $donYear = (int)substr((string)($don['donation_date'] ?? ''), 0, 4);
                 if ($donYear < 2000) $donYear = (int)date('Y');
@@ -406,6 +483,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_generate_receipt']
                 } catch (Throwable $e) {
                     $info['errors'][] = "Impossible de générer le reçu : " . $e->getMessage();
                 }
+            }
+        }
+    }
+}
+
+// 2bis) Reçu groupé : un seul reçu pour plusieurs dons du même donateur (même nature, même année)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_group_receipt'])) {
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array)($_POST['group_ids'] ?? [])))));
+    if (!$tableOk) {
+        $info['errors'][] = "Table donations inexistante : reçu groupé impossible.";
+    } elseif (count($ids) < 2) {
+        $info['errors'][] = "Cochez au moins deux dons à regrouper dans un même reçu.";
+    } else {
+        $in = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $pdo->prepare("SELECT * FROM donations WHERE id IN ($in) ORDER BY donation_date ASC, id ASC");
+        $stmt->execute($ids);
+        $grp = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $err = null;
+        if (count($grp) !== count($ids)) $err = "Un des dons sélectionnés est introuvable.";
+        $donorKey = static function (array $r): string {
+            if ((string)($r['donor_type'] ?? 'individual') === 'company') return 'c|' . receipt_digits((string)($r['donor_siren'] ?? ''));
+            return 'p|' . mb_strtolower(trim((string)($r['donor_first_name'] ?? '')) . '|' . trim((string)($r['donor_last_name'] ?? '')) . '|' . trim((string)($r['donor_postal_code'] ?? '')), 'UTF-8');
+        };
+        if ($err === null) {
+            $ref = $grp[0];
+            foreach ($grp as $r) {
+                if ((string)($r['source'] ?? '') !== 'manual') { $err = "Seuls les dons manuels peuvent être regroupés."; break; }
+                if ((int)($r['receipt_eligible'] ?? 0) !== 1) { $err = "Tous les dons doivent être éligibles au reçu fiscal."; break; }
+                if (!empty($r['receipt_number']) || !empty($r['receipt_group_id'])) { $err = "Un des dons a déjà un reçu."; break; }
+                if (($issue = receipt_blocking_issue($r)) !== null) { $err = $issue; break; }
+                if ($donorKey($r) !== $donorKey($ref)) { $err = "Les dons doivent venir du même donateur."; break; }
+                if ((string)($r['donation_kind'] ?? 'cash') !== (string)($ref['donation_kind'] ?? 'cash')) { $err = "Ne regroupez que des dons de même nature (numéraire, biens ou prestations)."; break; }
+                if (substr((string)$r['donation_date'], 0, 4) !== substr((string)$ref['donation_date'], 0, 4)) { $err = "Les dons doivent appartenir à la même année civile."; break; }
+            }
+        }
+        if ($err !== null) {
+            $info['errors'][] = "Reçu groupé impossible : " . $err;
+        } else {
+            $year = (int)substr((string)$grp[0]['donation_date'], 0, 4);
+            $number = next_receipt_number($pdo, $year);
+            $masterId = (int)$grp[0]['id'];
+            try {
+                $pdo->beginTransaction();
+                $pdo->prepare("UPDATE donations SET receipt_number = :n, receipt_date = CURDATE(), receipt_group_id = NULL WHERE id = :id")
+                    ->execute(['n' => $number, 'id' => $masterId]);
+                $up = $pdo->prepare("UPDATE donations SET receipt_number = :n, receipt_date = CURDATE(), receipt_group_id = :m WHERE id = :id");
+                foreach (array_slice($grp, 1) as $r) $up->execute(['n' => $number, 'm' => $masterId, 'id' => (int)$r['id']]);
+                $pdo->commit();
+                $total = array_sum(array_map(fn($r) => (float)$r['amount'], $grp));
+                audit_log('donations', 'generate', 'donation', $masterId, 'Reçu fiscal groupé n° ' . $number,
+                    ['montant' => round($total, 2), 'dons' => array_map(fn($r) => (int)$r['id'], $grp), 'groupe' => true]);
+                $msg = "Reçu groupé généré (n° {$number}, " . count($grp) . " dons, " . number_format($total, 2, ',', ' ') . " €).";
+            } catch (Throwable $e) {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                $info['errors'][] = "Impossible de générer le reçu groupé : " . $e->getMessage();
             }
         }
     }
@@ -747,7 +879,8 @@ if ($tableOk) {
         SELECT id, source, donation_date, amount, currency,
                donor_first_name, donor_last_name, donor_email,
                donor_address, donor_postal_code, donor_city, donor_country,
-               campaign, payment_method, status, receipt_eligible, receipt_number
+               campaign, payment_method, status, receipt_eligible, receipt_number,
+               donor_type, donor_company_name, donation_kind, receipt_group_id, proof_path
         FROM donations
         WHERE donation_date BETWEEN :start AND :end
           AND status <> 'cancelled'
@@ -781,6 +914,13 @@ elseif (isset($_POST['do_helloasso_sync_now'])) $activeTab = 'sync';
   .addr-list{position:absolute;left:0;right:0;top:100%;z-index:20;border:1px solid var(--tu-ink-100);background:#fff;border-radius:12px;box-shadow:0 10px 20px rgba(0,0,0,.08);max-height:220px;overflow:auto;margin-top:6px;}
   .addr-item{padding:10px 12px;cursor:pointer;font-size:13px;}
   .addr-item:hover{background:var(--tu-sand-50);}
+  /* Bulles d'aide « ? » du formulaire de don */
+  .tu-help-wrap{position:relative;display:inline-block;margin-left:4px;vertical-align:middle;text-transform:none;letter-spacing:0;font-weight:400;}
+  .tu-help{width:18px;height:18px;border-radius:50%;border:1px solid var(--tu-ink-100);background:#fff;color:var(--tu-ink-300);font:600 11px/16px system-ui,sans-serif;cursor:pointer;padding:0;}
+  .tu-help:hover,.tu-help[aria-expanded="true"]{background:var(--tu-sand-50);color:var(--tu-ink-900,#111);}
+  .tu-help-pop{position:absolute;left:0;top:calc(100% + 6px);z-index:40;width:min(400px,84vw);max-height:60vh;overflow:auto;background:#fff;border:1px solid var(--tu-ink-100);border-radius:12px;box-shadow:0 10px 24px rgba(0,0,0,.12);padding:12px 14px;font-size:12.5px;line-height:1.5;color:var(--tu-ink-700,#333);text-align:left;white-space:normal;}
+  .tu-help-pop[hidden]{display:none;}
+  .tu-help-list{margin:8px 0 0;padding-left:16px;} .tu-help-list li{margin:0 0 8px;}
   </style>
 </head>
 <body class="tu-v2">
@@ -947,154 +1087,7 @@ elseif (isset($_POST['do_helloasso_sync_now'])) $activeTab = 'sync';
   <div class="tu-tab-panel" data-panel="manual" style="<?= $activeTab === 'manual' ? '' : 'display:none;' ?>">
   <p style="margin-top:0;margin-bottom:16px;font-size:12px;color:var(--tu-ink-300);">À utiliser uniquement pour les dons hors HelloAsso. Les reçus fiscaux ne pourront être générés que pour ces dons manuels.</p>
 
-  <form method="post" autocomplete="off">
-    <input type="hidden" name="do_manual_add" value="1">
-
-    <div class="tu-form-grid tu-form-grid-3 tu-mb4">
-      <div class="tu-form-field">
-        <span class="tu-lbl">Date du don *</span>
-        <input class="tu-input" type="date" name="donation_date" required>
-      </div>
-      <div class="tu-form-field">
-        <span class="tu-lbl">Montant (€) *</span>
-        <input class="tu-input" type="number" name="amount" step="0.01" min="0" placeholder="0,00" required>
-      </div>
-      <div class="tu-form-field">
-        <span class="tu-lbl">Mode de paiement</span>
-        <select class="tu-input" name="payment_method">
-          <option value="">Choisir…</option>
-          <option value="Espèces">Espèces</option>
-          <option value="Chèque">Chèque</option>
-          <option value="Virement">Virement</option>
-          <option value="CB (hors HelloAsso)">CB (hors HelloAsso)</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="tu-form-grid tu-mb4">
-      <div class="tu-form-field">
-        <span class="tu-lbl">Prénom</span>
-        <input class="tu-input" type="text" name="donor_first_name" placeholder="Prénom">
-      </div>
-      <div class="tu-form-field">
-        <span class="tu-lbl">Nom</span>
-        <input class="tu-input" type="text" name="donor_last_name" placeholder="Nom">
-      </div>
-    </div>
-
-    <div class="tu-form-field tu-mb4">
-      <span class="tu-lbl">Email (optionnel)</span>
-      <input class="tu-input" type="email" name="donor_email" placeholder="email@exemple.com">
-    </div>
-
-    <div class="tu-form-field tu-mb4 addr-suggest">
-      <span class="tu-lbl">Adresse (optionnel)</span>
-      <input class="tu-input" id="addr_input" type="text" name="donor_address" placeholder="N° et rue">
-      <div id="addr_list" class="addr-list" style="display:none;"></div>
-    </div>
-
-    <div class="tu-form-grid tu-form-grid-3 tu-mb4">
-      <div class="tu-form-field">
-        <span class="tu-lbl">Code postal</span>
-        <input class="tu-input" id="addr_postal" type="text" name="donor_postal_code" placeholder="37000">
-      </div>
-      <div class="tu-form-field">
-        <span class="tu-lbl">Ville</span>
-        <input class="tu-input" id="addr_city" type="text" name="donor_city" placeholder="Tours">
-      </div>
-      <div class="tu-form-field">
-        <span class="tu-lbl">Pays</span>
-        <input class="tu-input" type="text" name="donor_country" value="France">
-      </div>
-    </div>
-
-    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;margin-top:6px;">
-      <label class="tu-form-check">
-        <input type="checkbox" name="receipt_eligible" value="1" checked>
-        Don éligible au reçu fiscal
-      </label>
-      <button class="tu-btn tu-btn-p" type="submit">Ajouter le don</button>
-    </div>
-
-    <p class="tu-hint" style="margin-top:12px;margin-bottom:0;">Le don sera enregistré avec <code>source=manual</code> et <code>status=paid</code>. L’heure est enregistrée automatiquement (heure courante) pour harmoniser avec HelloAsso.</p>
-  </form>
-
-  <script>
-  (function(){
-    const input = document.getElementById("addr_input");
-    const list  = document.getElementById("addr_list");
-    const cp    = document.getElementById("addr_postal");
-    const city  = document.getElementById("addr_city");
-    if(!input || !list) return;
-
-    let t = null;
-    function hide(){ list.style.display="none"; list.innerHTML=""; }
-    function show(items){
-      list.innerHTML = items.map((it, idx) => `<div class="addr-item" data-idx="${idx}">${it.label}</div>`).join("");
-      list.style.display = items.length ? "block" : "none";
-      list.onclick = (e) => {
-        const el = e.target.closest(".addr-item");
-        if(!el) return;
-        const item = items[parseInt(el.getAttribute("data-idx"),10)];
-        input.value = item.street || item.label;
-        if(item.postcode && cp) cp.value = item.postcode;
-        if(item.city && city) city.value = item.city;
-        hide();
-      };
-    }
-
-    input.addEventListener("input", () => {
-      const q = input.value.trim();
-      if(t) clearTimeout(t);
-      if(q.length < 4){ hide(); return; }
-      t = setTimeout(async () => {
-        try{
-          const url = "https://api-adresse.data.gouv.fr/search/?q=" + encodeURIComponent(q) + "&limit=6";
-          const res = await fetch(url);
-          const json = await res.json();
-          const feats = (json.features || []).map(f => {
-            const p = (f && f.properties) ? f.properties : {};
-            const street = [p.housenumber, p.street].filter(Boolean).join(' ').trim()
-              || (p.name || p.label || '');
-            return {
-              street,
-              postcode: p.postcode || '',
-              city: p.city || ''
-            };
-          });
-
-          // Normalisation "rue de la" côté front (confort) – le back renormalise aussi
-          function normalizeStreetFr(s){
-            s = (s||'').trim();
-            if(!s) return s;
-            s = s.toLowerCase();
-            // remonte la 1ère lettre de chaque mot
-            s = s.replace(/(^|[\s\-’'])\p{L}/gu, m => m.toUpperCase());
-            // particules en minuscules
-            s = s.replace(/\b(De|Du|Des|La|Le|Les|Et|Au|Aux|A|À)\b/g, m => m.toLowerCase());
-            s = s.replace(/\b(d'|d’|l'|l’)\b/gi, m => m.toLowerCase());
-            // types de voie en minuscules
-            s = s.replace(/\b(Rue|Avenue|Boulevard|Impasse|Chemin|Route|Allée|Place|Quai|Square|Cours|Voie|Résidence|Residence)\b/g, m => m.toLowerCase());
-            return s;
-          }
-
-          const items = feats.map(it => ({
-            label: [normalizeStreetFr(it.street), (it.postcode && it.city ? `${it.postcode} ${it.city}` : '')].filter(Boolean).join(' — '),
-            street: normalizeStreetFr(it.street),
-            postcode: it.postcode,
-            city: it.city
-          }));
-          show(items);
-        }catch(err){ hide(); }
-      }, 250);
-    });
-
-    document.addEventListener("click", (e) => {
-      if(e.target === input || list.contains(e.target)) return;
-      hide();
-    });
-  })();
-  </script>
+  <?php require __DIR__ . '/includes/manual_form.php'; ?>
   </div><!-- /panel manual -->
 
   <div class="tu-tab-panel" data-panel="import" style="<?= $activeTab === 'import' ? '' : 'display:none;' ?>">
@@ -1164,6 +1157,9 @@ elseif (isset($_POST['do_helloasso_sync_now'])) $activeTab = 'sync';
         <?php foreach ($rows as $r): ?>
           <?php
             $name = trim(($r['donor_first_name'] ?? '') . ' ' . ($r['donor_last_name'] ?? ''));
+            $isCompanyRow = (($r['donor_type'] ?? 'individual') === 'company' && trim((string)($r['donor_company_name'] ?? '')) !== '');
+            if ($isCompanyRow) { $contactRow = $name; $name = trim((string)$r['donor_company_name']); } else { $contactRow = ''; }
+            $inKindRow = (($r['donation_kind'] ?? 'cash') !== 'cash');
             $email = (string)($r['donor_email'] ?? '');
             $isManual = (($r['source'] ?? '') === 'manual');
             // Affichage du moyen de paiement : quand le don vient bien de
@@ -1185,11 +1181,12 @@ elseif (isset($_POST['do_helloasso_sync_now'])) $activeTab = 'sync';
           <tr>
             <td style="font-size:12px;color:var(--tu-ink-300);"><?= h(date('d/m/Y H:i', strtotime((string)$r['donation_date']))) ?></td>
             <td>
-              <div style="font-weight:700;font-size:13px;"><?= h($name ?: '—') ?></div>
+              <div style="font-weight:700;font-size:13px;"><?= h($name ?: '—') ?><?php if ($isCompanyRow): ?> <span class="tu-bdg tu-bdg-teal">entreprise</span><?php endif; ?></div>
+              <?php if ($contactRow !== ''): ?><div style="font-size:11px;color:var(--tu-ink-300);">Contact : <?= h($contactRow) ?></div><?php endif; ?>
               <?php if ($email): ?><div style="font-size:11px;color:var(--tu-ink-300);"><?= h($email) ?></div><?php endif; ?>
             </td>
-            <td style="font-weight:700;font-size:13px;"><?= h(number_format((float)$r['amount'], 2, ',', ' ')) ?> €</td>
-            <td style="font-size:13px;"><?= h($paymentLabel) ?></td>
+            <td style="font-weight:700;font-size:13px;"><?= h(number_format((float)$r['amount'], 2, ',', ' ')) ?> €<?php if ($inKindRow): ?><div style="font-size:11px;font-weight:400;color:var(--tu-ink-300);">valeur du don</div><?php endif; ?></td>
+            <td style="font-size:13px;"><?= $inKindRow ? '<span class="tu-bdg tu-bdg-amber">' . h(($r['donation_kind'] ?? '') === 'services' ? 'prestation' : 'en nature') . '</span>' : h($paymentLabel) ?></td>
             <td style="font-size:12px;color:var(--tu-ink-300);"><?= h($campaignLabel) ?></td>
             <td>
               <?php if (!empty($r['receipt_number'])): ?>
@@ -1197,6 +1194,7 @@ elseif (isset($_POST['do_helloasso_sync_now'])) $activeTab = 'sync';
                 <a target="_blank" href="<?= h($base) ?>/donations/receipt_pdf.php?id=<?= (int)$r['id'] ?>" style="margin-left:6px;font-size:11px;color:var(--tu-ink-300);">PDF</a>
               <?php elseif ((int)($r['receipt_eligible'] ?? 0) === 1): ?>
                 <span class="tu-bdg tu-bdg-amber">éligible</span>
+                <?php if ($isManual): ?><label title="Cocher plusieurs dons du même donateur pour un reçu groupé" style="margin-left:6px;"><input type="checkbox" name="group_ids[]" value="<?= (int)$r['id'] ?>" form="group_form"></label><?php endif; ?>
               <?php else: ?>
                 <span style="color:var(--tu-ink-300);">—</span>
               <?php endif; ?>
@@ -1219,6 +1217,9 @@ elseif (isset($_POST['do_helloasso_sync_now'])) $activeTab = 'sync';
                       <button type="submit" class="tu-btn tu-btn-xs">Envoyer par email</button>
                     </form>
                   <?php endif; ?>
+                  <?php if (!empty($r['proof_path'])): ?>
+                    <a class="tu-btn tu-btn-xs" target="_blank" href="<?= h($base) ?>/donations/proof.php?id=<?= (int)$r['id'] ?>">Justificatif</a>
+                  <?php endif; ?>
                   <form method="post" style="display:inline;" data-confirm="Supprimer ce don manuel ?">
                     <input type="hidden" name="do_manual_delete" value="1">
                     <input type="hidden" name="donation_id" value="<?= (int)$r['id'] ?>">
@@ -1233,6 +1234,12 @@ elseif (isset($_POST['do_helloasso_sync_now'])) $activeTab = 'sync';
         <?php endforeach; ?>
       </tbody>
     </table>
+    <form method="post" id="group_form" style="padding:12px 22px 18px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;"
+          data-confirm="Générer un seul reçu fiscal pour les dons cochés ? Ils ne pourront plus être supprimés ni modifiés séparément.">
+      <input type="hidden" name="do_group_receipt" value="1">
+      <button type="submit" class="tu-btn tu-btn-t tu-btn-xs">Générer un reçu groupé</button>
+      <span style="font-size:11px;color:var(--tu-ink-300);">Cochez, dans la colonne « Reçu », plusieurs dons « éligible » du même donateur, de même nature et de la même année.</span>
+    </form>
   <?php endif; ?>
 </div>
 

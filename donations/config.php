@@ -20,4 +20,7 @@ return [
     'org_address'      => (string) env('ORG_ADDRESS', ''),
     'org_city'         => (string) env('ORG_CITY', ''),
     'org_receipt_city' => (string) env('ORG_RECEIPT_CITY', ''),
+    // Mentions du reçu fiscal : objet de l'association et qualité (organisme d'intérêt général, etc.).
+    'org_object'       => (string) env('ORG_OBJECT', ''),
+    'org_status'       => (string) env('ORG_STATUS', "Organisme d'intérêt général"),
 ];
