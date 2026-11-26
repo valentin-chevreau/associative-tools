@@ -735,6 +735,7 @@ if (!$suiteIsCli) {
         '/planning/toggle_registration.php',
         '/planning/calendar.ics.php',
         '/logistique/stops/validate.php',
+        '/logistique/labels/public.php',
         '/mailing/unsubscribe.php',
     ];
 
