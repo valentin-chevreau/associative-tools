@@ -500,7 +500,7 @@ body.tu-v2 *, body.tu-v2 *::before, body.tu-v2 *::after {
   cursor: pointer; user-select: none;
 }
 .tu-select-trigger .tu-select-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tu-select-trigger .tu-select-label.placeholder { color: var(--tu-ink-300); }
+.tu-select-trigger .tu-select-label.is-placeholder { color: var(--tu-ink-300); }
 .tu-select-trigger.disabled { opacity: .55; cursor: not-allowed; }
 .tu-select-trigger .tu-select-chevron { flex-shrink: 0; color: var(--tu-ink-300); transition: transform .15s; }
 .tu-select-wrap.open .tu-select-trigger { border-color: var(--tu-amber-300); }

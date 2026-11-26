@@ -76,7 +76,7 @@
     function sync() {
       var opt = select.options[select.selectedIndex];
       label.textContent = opt ? opt.text : '';
-      label.classList.toggle('placeholder', !opt || opt.value === '');
+      label.classList.toggle('is-placeholder', !opt || opt.value === '');
       trigger.classList.toggle('disabled', select.disabled);
       rows.forEach(function (r) { r.el.classList.toggle('selected', r.opt.value === select.value); });
     }
@@ -199,12 +199,6 @@
     select.addEventListener('change', sync);
 
     select._syncCustomSelect = sync;
-    // À rappeler après avoir ajouté/retiré des <option> par script : reconstruit la liste affichée.
-    select._rebuildCustomSelect = function () {
-      build();
-      sync();
-      if (search) search.style.display = select.options.length >= SEARCH_FROM ? '' : 'none';
-    };
     build();
     sync();
   }
